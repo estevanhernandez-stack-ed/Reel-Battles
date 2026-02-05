@@ -13,13 +13,26 @@ import {
   XCircle, 
   Trophy, 
   RotateCcw,
-  Timer,
   Sparkles,
-  Loader2
+  Loader2,
+  Lightbulb,
+  Film
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { TriviaQuestion } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+interface FirebaseQuestion {
+  id: string;
+  question: string;
+  correctAnswer: string;
+  wrongAnswer1: string;
+  wrongAnswer2: string;
+  wrongAnswer3: string;
+  category: string;
+  difficulty: string;
+  hint: string | null;
+  movieTitle: string | null;
+}
 
 interface GameState {
   currentQuestion: number;
@@ -29,9 +42,11 @@ interface GameState {
   isCorrect: boolean | null;
   gameOver: boolean;
   shuffledAnswers: string[];
+  showHint: boolean;
+  hintsUsed: number;
 }
 
-function shuffleAnswers(question: TriviaQuestion): string[] {
+function shuffleAnswers(question: FirebaseQuestion): string[] {
   const answers = [
     question.correctAnswer,
     question.wrongAnswer1,
@@ -50,9 +65,11 @@ export default function Trivia() {
     isCorrect: null,
     gameOver: false,
     shuffledAnswers: [],
+    showHint: false,
+    hintsUsed: 0,
   });
 
-  const { data: questions, isLoading, error, refetch } = useQuery<TriviaQuestion[]>({
+  const { data: questions, isLoading, error, refetch } = useQuery<FirebaseQuestion[]>({
     queryKey: ["/api/trivia/questions"],
   });
 
@@ -102,6 +119,7 @@ export default function Trivia() {
         answered: false,
         selectedAnswer: null,
         isCorrect: null,
+        showHint: false,
       }));
     }
   };
@@ -115,8 +133,20 @@ export default function Trivia() {
       isCorrect: null,
       gameOver: false,
       shuffledAnswers: [],
+      showHint: false,
+      hintsUsed: 0,
     });
     refetch();
+  };
+
+  const toggleHint = () => {
+    if (!gameState.showHint && !gameState.answered) {
+      setGameState(prev => ({
+        ...prev,
+        showHint: true,
+        hintsUsed: prev.hintsUsed + 1,
+      }));
+    }
   };
 
   const getButtonVariant = (answer: string) => {
@@ -206,6 +236,12 @@ export default function Trivia() {
                   <p className="text-muted-foreground">
                     {percentage}% correct
                   </p>
+                  {gameState.hintsUsed > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <Lightbulb className="h-3 w-3 inline mr-1" />
+                      {gameState.hintsUsed} hint{gameState.hintsUsed > 1 ? "s" : ""} used
+                    </p>
+                  )}
                   <div className="flex items-center justify-center gap-1 mt-4">
                     {percentage >= 80 ? (
                       <>
@@ -271,7 +307,11 @@ export default function Trivia() {
             <span className="text-sm text-muted-foreground">
               Question {gameState.currentQuestion + 1} of {totalQuestions}
             </span>
-            <Badge variant="secondary">{currentQ?.category}</Badge>
+            {currentQ?.movieTitle && (
+              <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                {currentQ.movieTitle}
+              </span>
+            )}
           </div>
           <Progress value={progressPercent} className="h-2" />
         </div>
@@ -286,16 +326,47 @@ export default function Trivia() {
           >
             <Card className="mb-6">
               <CardHeader>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center flex-wrap gap-2 mb-2">
                   <Badge 
                     variant={currentQ?.difficulty === "hard" ? "destructive" : currentQ?.difficulty === "medium" ? "secondary" : "outline"}
                   >
                     {currentQ?.difficulty}
                   </Badge>
+                  {currentQ?.movieTitle && (
+                    <Badge variant="outline">
+                      <Film className="h-3 w-3 mr-1" />
+                      {currentQ.movieTitle}
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl font-serif leading-relaxed" data-testid="text-question">
                   {currentQ?.question}
                 </CardTitle>
+                {currentQ?.hint && !gameState.answered && (
+                  <div className="mt-3">
+                    {gameState.showHint ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="flex items-start gap-2 text-sm text-muted-foreground bg-muted rounded-md p-3"
+                      >
+                        <Lightbulb className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
+                        <span>{currentQ.hint}</span>
+                      </motion.div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleHint}
+                        className="text-muted-foreground"
+                        data-testid="button-hint"
+                      >
+                        <Lightbulb className="h-4 w-4 mr-1" />
+                        Show Hint
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardHeader>
             </Card>
 
