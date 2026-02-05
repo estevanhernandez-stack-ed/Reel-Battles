@@ -16,6 +16,7 @@ export interface IStorage {
   
   getTriviaQuestions(limit?: number): Promise<TriviaQuestion[]>;
   getRandomTriviaQuestions(limit: number): Promise<TriviaQuestion[]>;
+  getTriviaQuestionCount(): Promise<number>;
   createTriviaQuestion(question: InsertTriviaQuestion): Promise<TriviaQuestion>;
   
   getMovies(): Promise<Movie[]>;
@@ -56,6 +57,11 @@ export class DatabaseStorage implements IStorage {
 
   async getRandomTriviaQuestions(limit: number): Promise<TriviaQuestion[]> {
     return db.select().from(triviaQuestions).orderBy(sql`RANDOM()`).limit(limit);
+  }
+
+  async getTriviaQuestionCount(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(triviaQuestions);
+    return Number(result.count);
   }
 
   async createTriviaQuestion(question: InsertTriviaQuestion): Promise<TriviaQuestion> {

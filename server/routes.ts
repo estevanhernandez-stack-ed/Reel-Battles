@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertGameSessionSchema, type MovieAthlete } from "@shared/schema";
-import { getFirebaseQuestions, getFirebaseQuestionCount, warmFirebaseCache } from "./firebase";
 
 const STAT_WEIGHTS = {
   athleticism: 1.0,
@@ -51,35 +50,21 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  warmFirebaseCache();
-
   app.get("/api/trivia/questions", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
-      const questions = await getFirebaseQuestions(limit);
-      if (questions.length > 0) {
-        res.json(questions);
-      } else {
-        const fallback = await storage.getRandomTriviaQuestions(limit);
-        res.json(fallback);
-      }
+      const questions = await storage.getRandomTriviaQuestions(limit);
+      res.json(questions);
     } catch (error) {
       console.error("Error fetching trivia questions:", error);
-      try {
-        const fallback = await storage.getRandomTriviaQuestions(
-          parseInt(req.query.limit as string) || 10
-        );
-        res.json(fallback);
-      } catch {
-        res.status(500).json({ error: "Failed to fetch trivia questions" });
-      }
+      res.status(500).json({ error: "Failed to fetch trivia questions" });
     }
   });
 
   app.get("/api/trivia/stats", async (_req, res) => {
     try {
-      const count = await getFirebaseQuestionCount();
-      res.json({ totalQuestions: count, source: "firebase" });
+      const count = await storage.getTriviaQuestionCount();
+      res.json({ totalQuestions: count, source: "postgresql" });
     } catch (error) {
       console.error("Error fetching trivia stats:", error);
       res.status(500).json({ error: "Failed to fetch trivia stats" });

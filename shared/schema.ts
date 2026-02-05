@@ -18,6 +18,9 @@ export const triviaQuestions = pgTable("trivia_questions", {
   wrongAnswer3: text("wrong_answer_3").notNull(),
   category: text("category").notNull(),
   difficulty: text("difficulty").notNull(),
+  hint: text("hint"),
+  movieTitle: text("movie_title"),
+  firebaseId: text("firebase_id"),
 });
 
 export const movies = pgTable("movies", {

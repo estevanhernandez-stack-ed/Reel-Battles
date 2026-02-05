@@ -19,20 +19,8 @@ import {
   Film
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { TriviaQuestion } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-
-interface FirebaseQuestion {
-  id: string;
-  question: string;
-  correctAnswer: string;
-  wrongAnswer1: string;
-  wrongAnswer2: string;
-  wrongAnswer3: string;
-  category: string;
-  difficulty: string;
-  hint: string | null;
-  movieTitle: string | null;
-}
 
 interface GameState {
   currentQuestion: number;
@@ -46,7 +34,7 @@ interface GameState {
   hintsUsed: number;
 }
 
-function shuffleAnswers(question: FirebaseQuestion): string[] {
+function shuffleAnswers(question: TriviaQuestion): string[] {
   const answers = [
     question.correctAnswer,
     question.wrongAnswer1,
@@ -69,7 +57,7 @@ export default function Trivia() {
     hintsUsed: 0,
   });
 
-  const { data: questions, isLoading, error, refetch } = useQuery<FirebaseQuestion[]>({
+  const { data: questions, isLoading, error, refetch } = useQuery<TriviaQuestion[]>({
     queryKey: ["/api/trivia/questions"],
   });
 
