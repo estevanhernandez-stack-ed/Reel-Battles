@@ -1,7 +1,8 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
 import { insertGameSessionSchema, type MovieAthlete } from "@shared/schema";
+import { ZodError } from "zod";
 
 const STAT_WEIGHTS = {
   athleticism: 1.0,
@@ -122,6 +123,14 @@ export async function registerRoutes(
   app.post("/api/athletes/battle", async (req, res) => {
     try {
       const { playerTeam, opponentTeam } = req.body as { playerTeam: MovieAthlete[]; opponentTeam: MovieAthlete[] };
+
+      if (!Array.isArray(playerTeam) || !Array.isArray(opponentTeam)) {
+        return res.status(400).json({ error: "playerTeam and opponentTeam must be arrays" });
+      }
+
+      if (playerTeam.length === 0 || opponentTeam.length === 0) {
+        return res.status(400).json({ error: "Both teams must have at least one athlete" });
+      }
       
       const playerScore = calculateTeamScore(playerTeam);
       const opponentScore = calculateTeamScore(opponentTeam);
@@ -147,8 +156,14 @@ export async function registerRoutes(
       const session = await storage.createGameSession(validatedData);
       res.json(session);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid game session data", 
+          details: error.errors.map(e => ({ field: e.path.join("."), message: e.message }))
+        });
+      }
       console.error("Error creating game session:", error);
-      res.status(400).json({ error: "Invalid game session data" });
+      res.status(500).json({ error: "Failed to save game session" });
     }
   });
 

@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { MovieAthlete } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 const ARCHETYPES_ORDER = ["captain", "natural", "underdog", "veteran", "villain", "teammate", "wildcard"];
 const ARCHETYPE_LABELS: Record<string, string> = {
@@ -199,12 +199,12 @@ export default function Draft() {
             </p>
             <div className="flex gap-3 justify-center">
               <Link href="/">
-                <Button variant="outline">
+                <Button variant="outline" data-testid="button-back-home">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back Home
                 </Button>
               </Link>
-              <Button onClick={() => refetch()}>Try Again</Button>
+              <Button onClick={() => refetch()} data-testid="button-try-again">Try Again</Button>
             </div>
           </CardContent>
         </Card>
@@ -222,7 +222,7 @@ export default function Draft() {
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" data-testid="button-back">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
@@ -320,7 +320,7 @@ export default function Draft() {
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" data-testid="button-back">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { TriviaQuestion } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 interface GameState {
   currentQuestion: number;
@@ -97,7 +97,7 @@ export default function Trivia() {
       setGameState(prev => ({ ...prev, gameOver: true }));
       saveGameMutation.mutate({
         gameType: "trivia",
-        score: gameState.score + (gameState.isCorrect ? 0 : 0),
+        score: gameState.isCorrect ? gameState.score + 1 : gameState.score,
         totalQuestions,
       });
     } else {
@@ -169,12 +169,12 @@ export default function Trivia() {
             </p>
             <div className="flex gap-3 justify-center">
               <Link href="/">
-                <Button variant="outline">
+                <Button variant="outline" data-testid="button-back-home">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back Home
                 </Button>
               </Link>
-              <Button onClick={() => refetch()}>Try Again</Button>
+              <Button onClick={() => refetch()} data-testid="button-try-again">Try Again</Button>
             </div>
           </CardContent>
         </Card>
@@ -190,7 +190,7 @@ export default function Trivia() {
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" data-testid="button-back">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
