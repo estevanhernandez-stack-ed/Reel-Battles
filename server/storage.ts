@@ -22,6 +22,11 @@ export interface IStorage {
   getRandomMovies(limit: number): Promise<Movie[]>;
   createMovie(movie: InsertMovie): Promise<Movie>;
   
+  getMovieAthletes(): Promise<MovieAthlete[]>;
+  getMovieAthletesByArchetype(archetype: string): Promise<MovieAthlete[]>;
+  getRandomMovieAthletes(limit: number): Promise<MovieAthlete[]>;
+  createMovieAthlete(athlete: InsertMovieAthlete): Promise<MovieAthlete>;
+  
   createGameSession(session: InsertGameSession): Promise<GameSession>;
   getGameSessions(gameType?: string): Promise<GameSession[]>;
 }
@@ -68,6 +73,23 @@ export class DatabaseStorage implements IStorage {
 
   async createMovie(movie: InsertMovie): Promise<Movie> {
     const [result] = await db.insert(movies).values(movie).returning();
+    return result;
+  }
+
+  async getMovieAthletes(): Promise<MovieAthlete[]> {
+    return db.select().from(movieAthletes);
+  }
+
+  async getMovieAthletesByArchetype(archetype: string): Promise<MovieAthlete[]> {
+    return db.select().from(movieAthletes).where(eq(movieAthletes.archetype, archetype));
+  }
+
+  async getRandomMovieAthletes(limit: number): Promise<MovieAthlete[]> {
+    return db.select().from(movieAthletes).orderBy(sql`RANDOM()`).limit(limit);
+  }
+
+  async createMovieAthlete(athlete: InsertMovieAthlete): Promise<MovieAthlete> {
+    const [result] = await db.insert(movieAthletes).values(athlete).returning();
     return result;
   }
 

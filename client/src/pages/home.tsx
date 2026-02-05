@@ -18,11 +18,11 @@ const gameModesData = [
   {
     id: "draft",
     title: "Movie Draft",
-    description: "Head-to-head card battle! Compare movies and pick the winner based on various attributes.",
+    description: "Build your dream team of movie characters! Draft athletes by archetype, then battle it out War-style with weighted stats.",
     icon: Trophy,
     color: "from-amber-500 to-yellow-600",
     href: "/draft",
-    stats: "Card Battle",
+    stats: "Team Battle",
   },
   {
     id: "boxoffice",

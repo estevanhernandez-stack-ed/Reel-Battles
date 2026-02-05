@@ -1,7 +1,49 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSessionSchema } from "@shared/schema";
+import { insertGameSessionSchema, type MovieAthlete } from "@shared/schema";
+
+const STAT_WEIGHTS = {
+  athleticism: 1.0,
+  clutch: 1.2,
+  leadership: 1.1,
+  heart: 1.3,
+  skill: 1.0,
+  intimidation: 0.8,
+  teamwork: 1.2,
+  charisma: 0.7,
+};
+
+export function calculateWeightedScore(athlete: MovieAthlete): number {
+  return (
+    athlete.athleticism * STAT_WEIGHTS.athleticism +
+    athlete.clutch * STAT_WEIGHTS.clutch +
+    athlete.leadership * STAT_WEIGHTS.leadership +
+    athlete.heart * STAT_WEIGHTS.heart +
+    athlete.skill * STAT_WEIGHTS.skill +
+    athlete.intimidation * STAT_WEIGHTS.intimidation +
+    athlete.teamwork * STAT_WEIGHTS.teamwork +
+    athlete.charisma * STAT_WEIGHTS.charisma
+  );
+}
+
+export function calculateTeamScore(athletes: MovieAthlete[]): number {
+  if (athletes.length === 0) return 0;
+  const totalScore = athletes.reduce((sum, athlete) => sum + calculateWeightedScore(athlete), 0);
+  const synergyBonus = calculateSynergyBonus(athletes);
+  return totalScore + synergyBonus;
+}
+
+function calculateSynergyBonus(athletes: MovieAthlete[]): number {
+  let bonus = 0;
+  const archetypes = athletes.map(a => a.archetype);
+  if (archetypes.includes("captain")) bonus += 50;
+  if (archetypes.includes("veteran") && archetypes.includes("underdog")) bonus += 30;
+  if (archetypes.includes("natural") && archetypes.includes("teammate")) bonus += 25;
+  const uniqueArchetypes = new Set(archetypes);
+  if (uniqueArchetypes.size >= 4) bonus += 40;
+  return bonus;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -37,6 +79,55 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching random movies:", error);
       res.status(500).json({ error: "Failed to fetch random movies" });
+    }
+  });
+
+  app.get("/api/athletes", async (req, res) => {
+    try {
+      const archetype = req.query.archetype as string | undefined;
+      if (archetype) {
+        const athletes = await storage.getMovieAthletesByArchetype(archetype);
+        res.json(athletes);
+      } else {
+        const athletes = await storage.getMovieAthletes();
+        res.json(athletes);
+      }
+    } catch (error) {
+      console.error("Error fetching athletes:", error);
+      res.status(500).json({ error: "Failed to fetch athletes" });
+    }
+  });
+
+  app.get("/api/athletes/random", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 2;
+      const athletes = await storage.getRandomMovieAthletes(limit);
+      res.json(athletes);
+    } catch (error) {
+      console.error("Error fetching random athletes:", error);
+      res.status(500).json({ error: "Failed to fetch random athletes" });
+    }
+  });
+
+  app.post("/api/athletes/battle", async (req, res) => {
+    try {
+      const { playerTeam, opponentTeam } = req.body as { playerTeam: MovieAthlete[]; opponentTeam: MovieAthlete[] };
+      
+      const playerScore = calculateTeamScore(playerTeam);
+      const opponentScore = calculateTeamScore(opponentTeam);
+      
+      const result = {
+        playerScore: Math.round(playerScore),
+        opponentScore: Math.round(opponentScore),
+        winner: playerScore > opponentScore ? "player" : playerScore < opponentScore ? "opponent" : "tie",
+        playerBreakdown: playerTeam.map(a => ({ name: a.name, score: Math.round(calculateWeightedScore(a)) })),
+        opponentBreakdown: opponentTeam.map(a => ({ name: a.name, score: Math.round(calculateWeightedScore(a)) })),
+      };
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating battle:", error);
+      res.status(500).json({ error: "Failed to calculate battle" });
     }
   });
 
