@@ -178,5 +178,83 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/movies", async (req, res) => {
+    try {
+      const { title, year, genre, openingWeekend, director, posterUrl, rating, synopsis } = req.body;
+      if (!title || !year || !genre || !openingWeekend) {
+        return res.status(400).json({ error: "title, year, genre, and openingWeekend are required" });
+      }
+      const movie = await storage.createMovie({
+        title,
+        year: Number(year),
+        genre,
+        openingWeekend: Number(openingWeekend),
+        director: director || null,
+        posterUrl: posterUrl || null,
+        rating: rating || null,
+        synopsis: synopsis || null,
+      });
+      res.json(movie);
+    } catch (error) {
+      console.error("Error creating movie:", error);
+      res.status(500).json({ error: "Failed to create movie" });
+    }
+  });
+
+  app.delete("/api/admin/movies/:id", async (req, res) => {
+    try {
+      await storage.deleteMovie(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting movie:", error);
+      res.status(500).json({ error: "Failed to delete movie" });
+    }
+  });
+
+  app.post("/api/admin/athletes", async (req, res) => {
+    try {
+      const { name, movie, movieYear, sport, actor, archetype, bio, quote } = req.body;
+      if (!name || !movie || !movieYear || !sport || !actor || !archetype) {
+        return res.status(400).json({ error: "name, movie, movieYear, sport, actor, and archetype are required" });
+      }
+      const randomStat = () => Math.floor(Math.random() * 30) + 60;
+      const athlete = await storage.createMovieAthlete({
+        name,
+        movie,
+        movieYear: Number(movieYear),
+        sport,
+        actor,
+        archetype,
+        bio: bio || null,
+        quote: quote || null,
+        athleticism: randomStat(),
+        clutch: randomStat(),
+        leadership: randomStat(),
+        heart: randomStat(),
+        skill: randomStat(),
+        intimidation: randomStat(),
+        teamwork: randomStat(),
+        charisma: randomStat(),
+        wildcardName: null,
+        wildcardCategory: null,
+        wildcardValue: null,
+      });
+      res.json(athlete);
+    } catch (error) {
+      console.error("Error creating athlete:", error);
+      res.status(500).json({ error: "Failed to create athlete" });
+    }
+  });
+
+  app.delete("/api/admin/athletes/:id", async (req, res) => {
+    try {
+      await storage.deleteMovieAthlete(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting athlete:", error);
+      res.status(500).json({ error: "Failed to delete athlete" });
+    }
+  });
+
   return httpServer;
 }

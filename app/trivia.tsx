@@ -1,0 +1,344 @@
+import { useState, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors, Spacing, FontSize, BorderRadius } from "../mobile/constants/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { apiFetch, apiPost } from "../mobile/constants/api";
+
+interface TriviaQuestion {
+  id: string;
+  question: string;
+  correctAnswer: string;
+  wrongAnswer1: string;
+  wrongAnswer2: string;
+  wrongAnswer3: string;
+  category: string;
+  difficulty: string;
+  hint: string | null;
+  movieTitle: string | null;
+}
+
+function shuffleAnswers(q: TriviaQuestion): string[] {
+  return [q.correctAnswer, q.wrongAnswer1, q.wrongAnswer2, q.wrongAnswer3].sort(() => Math.random() - 0.5);
+}
+
+export default function TriviaScreen() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const router = useRouter();
+
+  const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [gameOver, setGameOver] = useState(false);
+  const [shuffled, setShuffled] = useState<string[]>([]);
+  const [showHint, setShowHint] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
+
+  const loadQuestions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<TriviaQuestion[]>("/api/trivia/questions?limit=10");
+      setQuestions(data);
+      if (data.length > 0) setShuffled(shuffleAnswers(data[0]));
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
+
+  const currentQ = questions[currentIndex];
+  const totalQuestions = questions.length || 10;
+  const progress = ((currentIndex + 1) / totalQuestions) * 100;
+
+  const handleAnswer = (answer: string) => {
+    if (answered || !currentQ) return;
+    const correct = answer === currentQ.correctAnswer;
+    setAnswered(true);
+    setSelectedAnswer(answer);
+    setIsCorrect(correct);
+    if (correct) setScore((s) => s + 1);
+  };
+
+  const handleNext = () => {
+    if (currentIndex >= totalQuestions - 1) {
+      setGameOver(true);
+      apiPost("/api/games", { gameType: "trivia", score, totalQuestions }).catch(() => {});
+    } else {
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      setAnswered(false);
+      setSelectedAnswer(null);
+      setIsCorrect(null);
+      setShowHint(false);
+      setShuffled(shuffleAnswers(questions[nextIndex]));
+    }
+  };
+
+  const handleRestart = () => {
+    setCurrentIndex(0);
+    setScore(0);
+    setAnswered(false);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+    setGameOver(false);
+    setShowHint(false);
+    setHintsUsed(0);
+    loadQuestions();
+  };
+
+  const getAnswerStyle = (answer: string) => {
+    if (!answered) return { bg: colors.surface, border: colors.border, text: colors.text };
+    if (answer === currentQ?.correctAnswer) return { bg: "#16a34a20", border: "#16a34a", text: "#16a34a" };
+    if (answer === selectedAnswer && !isCorrect) return { bg: "#dc262620", border: "#dc2626", text: "#dc2626" };
+    return { bg: colors.surface, border: colors.border, text: colors.textTertiary };
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading trivia questions...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (gameOver) {
+    const percentage = Math.round((score / totalQuestions) * 100);
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.resultsContainer}>
+            <View style={[styles.trophyCircle, { backgroundColor: "#f59e0b" }]}>
+              <Ionicons name="trophy" size={44} color="#ffffff" />
+            </View>
+            <Text style={[styles.resultsTitle, { color: colors.text }]}>Game Over!</Text>
+            <Text style={[styles.resultsSubtitle, { color: colors.textSecondary }]}>
+              You've completed the trivia challenge
+            </Text>
+            <View style={[styles.scoreBox, { backgroundColor: colors.surfaceVariant }]}>
+              <Text style={[styles.scoreNumber, { color: colors.primary }]}>{score}/{totalQuestions}</Text>
+              <Text style={[styles.scorePercent, { color: colors.textSecondary }]}>{percentage}% correct</Text>
+              {hintsUsed > 0 && (
+                <Text style={[styles.hintsText, { color: colors.textTertiary }]}>
+                  {hintsUsed} hint{hintsUsed > 1 ? "s" : ""} used
+                </Text>
+              )}
+              <Text style={[styles.ratingText, { color: percentage >= 80 ? colors.accent : colors.textSecondary }]}>
+                {percentage >= 80 ? "Excellent!" : percentage >= 60 ? "Good job!" : "Keep practicing!"}
+              </Text>
+            </View>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[styles.outlineButton, { borderColor: colors.border }]}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="arrow-back" size={18} color={colors.text} />
+                <Text style={[styles.outlineButtonText, { color: colors.text }]}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                onPress={handleRestart}
+              >
+                <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
+                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Play Again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <View style={styles.topBarCenter}>
+          <Ionicons name="film" size={18} color={colors.primary} />
+          <Text style={[styles.topBarTitle, { color: colors.text }]}>Trivia Quiz</Text>
+        </View>
+        <View style={[styles.scorePill, { backgroundColor: colors.surfaceVariant }]}>
+          <Ionicons name="trophy" size={14} color={colors.accent} />
+          <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.progressSection}>
+          <View style={styles.progressLabels}>
+            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+              Question {currentIndex + 1} of {totalQuestions}
+            </Text>
+            {currentQ?.movieTitle && (
+              <Text style={[styles.movieText, { color: colors.textTertiary }]} numberOfLines={1}>
+                {currentQ.movieTitle}
+              </Text>
+            )}
+          </View>
+          <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
+          </View>
+        </View>
+
+        <View style={[styles.questionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={styles.badgeRow}>
+            <View style={[styles.badge, {
+              backgroundColor: currentQ?.difficulty === "hard" ? "#dc262620" : currentQ?.difficulty === "medium" ? colors.surfaceVariant : "transparent",
+              borderColor: currentQ?.difficulty === "hard" ? "#dc2626" : currentQ?.difficulty === "medium" ? colors.border : colors.border,
+            }]}>
+              <Text style={[styles.badgeText, {
+                color: currentQ?.difficulty === "hard" ? "#dc2626" : colors.textSecondary,
+              }]}>{currentQ?.difficulty}</Text>
+            </View>
+            {currentQ?.movieTitle && (
+              <View style={[styles.badge, { borderColor: colors.border }]}>
+                <Ionicons name="film-outline" size={12} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {currentQ.movieTitle}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.questionText, { color: colors.text }]}>{currentQ?.question}</Text>
+          {currentQ?.hint && !answered && (
+            showHint ? (
+              <View style={[styles.hintBox, { backgroundColor: colors.surfaceVariant }]}>
+                <Ionicons name="bulb" size={16} color="#f59e0b" />
+                <Text style={[styles.hintText, { color: colors.textSecondary }]}>{currentQ.hint}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => { setShowHint(true); setHintsUsed((h) => h + 1); }}
+                style={styles.hintButton}
+              >
+                <Ionicons name="bulb-outline" size={16} color={colors.textTertiary} />
+                <Text style={[styles.hintButtonText, { color: colors.textTertiary }]}>Show Hint</Text>
+              </TouchableOpacity>
+            )
+          )}
+        </View>
+
+        <View style={styles.answersContainer}>
+          {shuffled.map((answer, index) => {
+            const style = getAnswerStyle(answer);
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[styles.answerButton, { backgroundColor: style.bg, borderColor: style.border }]}
+                onPress={() => handleAnswer(answer)}
+                disabled={answered}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.answerLetter, { backgroundColor: colors.surfaceVariant }]}>
+                  <Text style={[styles.answerLetterText, { color: colors.textSecondary }]}>
+                    {String.fromCharCode(65 + index)}
+                  </Text>
+                </View>
+                <Text style={[styles.answerText, { color: style.text }]} numberOfLines={3}>{answer}</Text>
+                {answered && answer === currentQ?.correctAnswer && (
+                  <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
+                )}
+                {answered && answer === selectedAnswer && !isCorrect && (
+                  <Ionicons name="close-circle" size={22} color="#dc2626" />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {answered && (
+          <View style={[styles.resultBar, {
+            backgroundColor: isCorrect ? "#16a34a10" : "#dc262610",
+            borderColor: isCorrect ? "#16a34a40" : "#dc262640",
+          }]}>
+            <View style={styles.resultContent}>
+              <Ionicons
+                name={isCorrect ? "checkmark-circle" : "close-circle"}
+                size={24}
+                color={isCorrect ? "#16a34a" : "#dc2626"}
+              />
+              <Text style={[styles.resultText, { color: isCorrect ? "#16a34a" : "#dc2626" }]}>
+                {isCorrect ? "Correct!" : "Incorrect!"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.nextButton, { backgroundColor: colors.primary }]}
+              onPress={handleNext}
+            >
+              <Text style={[styles.nextButtonText, { color: colors.primaryForeground }]}>
+                {currentIndex >= totalQuestions - 1 ? "See Results" : "Next"}
+              </Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.primaryForeground} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.lg },
+  loadingText: { fontSize: FontSize.md },
+  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: 1, gap: Spacing.md },
+  backButton: { padding: Spacing.xs },
+  topBarCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  topBarTitle: { fontSize: FontSize.lg, fontWeight: "700" },
+  scorePill: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.md },
+  scoreText: { fontSize: FontSize.md, fontWeight: "700" },
+  scrollContent: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
+  progressSection: { marginBottom: Spacing.lg },
+  progressLabels: { flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm },
+  progressText: { fontSize: FontSize.sm },
+  movieText: { fontSize: FontSize.sm, maxWidth: 180 },
+  progressBar: { height: 6, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3 },
+  questionCard: { borderRadius: BorderRadius.lg, borderWidth: 1, padding: Spacing.lg, marginBottom: Spacing.lg, gap: Spacing.md },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  badge: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: BorderRadius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
+  badgeText: { fontSize: FontSize.xs, fontWeight: "600", textTransform: "capitalize" },
+  questionText: { fontSize: FontSize.lg, fontWeight: "600", lineHeight: 26 },
+  hintBox: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm, borderRadius: BorderRadius.md, padding: Spacing.md },
+  hintText: { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
+  hintButton: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
+  hintButtonText: { fontSize: FontSize.sm },
+  answersContainer: { gap: Spacing.md, marginBottom: Spacing.lg },
+  answerButton: { flexDirection: "row", alignItems: "center", gap: Spacing.md, borderWidth: 1, borderRadius: BorderRadius.md, padding: Spacing.lg },
+  answerLetter: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  answerLetterText: { fontSize: FontSize.sm, fontWeight: "600" },
+  answerText: { flex: 1, fontSize: FontSize.md, lineHeight: 22 },
+  resultBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: BorderRadius.lg, padding: Spacing.lg },
+  resultContent: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  resultText: { fontSize: FontSize.md, fontWeight: "700" },
+  nextButton: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
+  nextButtonText: { fontSize: FontSize.md, fontWeight: "700" },
+  resultsContainer: { alignItems: "center", paddingTop: Spacing.xxxl, gap: Spacing.md },
+  trophyCircle: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: Spacing.lg },
+  resultsTitle: { fontSize: FontSize.xxxl, fontWeight: "800" },
+  resultsSubtitle: { fontSize: FontSize.md },
+  scoreBox: { borderRadius: BorderRadius.lg, padding: Spacing.xxl, alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.lg, width: "100%", gap: Spacing.xs },
+  scoreNumber: { fontSize: 48, fontWeight: "800" },
+  scorePercent: { fontSize: FontSize.md },
+  hintsText: { fontSize: FontSize.xs },
+  ratingText: { fontSize: FontSize.md, fontWeight: "600", marginTop: Spacing.sm },
+  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.lg },
+  outlineButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, borderWidth: 1, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
+  outlineButtonText: { fontSize: FontSize.md, fontWeight: "600" },
+  primaryButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
+  primaryButtonText: { fontSize: FontSize.md, fontWeight: "600" },
+});

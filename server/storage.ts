@@ -22,11 +22,13 @@ export interface IStorage {
   getMovies(): Promise<Movie[]>;
   getRandomMovies(limit: number): Promise<Movie[]>;
   createMovie(movie: InsertMovie): Promise<Movie>;
+  deleteMovie(id: string): Promise<void>;
   
   getMovieAthletes(): Promise<MovieAthlete[]>;
   getMovieAthletesByArchetype(archetype: string): Promise<MovieAthlete[]>;
   getRandomMovieAthletes(limit: number): Promise<MovieAthlete[]>;
   createMovieAthlete(athlete: InsertMovieAthlete): Promise<MovieAthlete>;
+  deleteMovieAthlete(id: string): Promise<void>;
   
   createGameSession(session: InsertGameSession): Promise<GameSession>;
   getGameSessions(gameType?: string): Promise<GameSession[]>;
@@ -82,6 +84,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async deleteMovie(id: string): Promise<void> {
+    await db.delete(movies).where(eq(movies.id, id));
+  }
+
   async getMovieAthletes(): Promise<MovieAthlete[]> {
     return db.select().from(movieAthletes);
   }
@@ -97,6 +103,10 @@ export class DatabaseStorage implements IStorage {
   async createMovieAthlete(athlete: InsertMovieAthlete): Promise<MovieAthlete> {
     const [result] = await db.insert(movieAthletes).values(athlete).returning();
     return result;
+  }
+
+  async deleteMovieAthlete(id: string): Promise<void> {
+    await db.delete(movieAthletes).where(eq(movieAthletes.id, id));
   }
 
   async createGameSession(session: InsertGameSession): Promise<GameSession> {
