@@ -50,6 +50,9 @@ export const movieAthletes = pgTable("movie_athletes", {
   intimidation: integer("intimidation").notNull().default(50),
   teamwork: integer("teamwork").notNull().default(50),
   charisma: integer("charisma").notNull().default(50),
+  wildcardName: text("wildcard_name"),
+  wildcardCategory: text("wildcard_category"),
+  wildcardValue: integer("wildcard_value").default(0),
 });
 
 export const gameSessions = pgTable("game_sessions", {
