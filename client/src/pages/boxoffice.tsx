@@ -55,7 +55,12 @@ export default function BoxOffice() {
   });
 
   const { data: movies, isLoading, error, refetch } = useQuery<Movie[]>({
-    queryKey: ["/api/movies/random", gameState.currentRound],
+    queryKey: ["/api/movies/random", String(gameState.currentRound)],
+    queryFn: async () => {
+      const res = await fetch("/api/movies/random");
+      if (!res.ok) throw new Error("Failed to fetch movies");
+      return res.json();
+    },
     enabled: !gameState.gameOver,
   });
 
