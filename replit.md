@@ -34,11 +34,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Layer
 - **Database**: PostgreSQL (connection via DATABASE_URL environment variable)
-- **Firebase Firestore**: Trivia questions fetched from `guestbuzz-cineperks` project (publicly readable, no auth needed)
-  - Collection: `questionBank` - 38,500+ movie trivia questions with text, options, correctAnswerIndex, movieTitle, difficulty, hint
-  - Cached in-memory with 30-minute TTL, pre-warmed on server startup via background fetch
-  - Fallback to local PostgreSQL trivia_questions table if Firebase is unavailable
-  - Service: `server/firebase.ts` - handles Firestore REST API communication, caching, and data transformation
+- **Data Source**: All 38,505 trivia questions migrated from Firebase Firestore to PostgreSQL (migration complete, Firebase no longer used)
 - **Schema Location**: `shared/schema.ts` - shared between frontend and backend
 - **Tables**:
   - `users` - User accounts with username/password
@@ -57,12 +53,16 @@ Preferred communication style: Simple, everyday language.
 │       └── lib/            # Utilities and query client
 ├── server/           # Express backend
 │   ├── index.ts      # Server entry point
-│   ├── routes.ts     # API route definitions
+│   ├── routes.ts     # API route definitions (exports scoring functions for testing)
 │   ├── storage.ts    # Database access layer
 │   ├── seed.ts       # Database seeding with sample data
 │   └── db.ts         # Database connection
 ├── shared/           # Shared types and schemas
 │   └── schema.ts     # Drizzle schema definitions
+├── tests/            # Automated test suite (Vitest)
+│   ├── scoring.test.ts   # Unit tests for battle scoring logic (10 tests)
+│   └── api.test.ts       # API integration tests for all endpoints (16 tests)
+├── vitest.config.ts  # Vitest test runner configuration
 └── migrations/       # Database migrations (Drizzle Kit)
 ```
 
@@ -70,6 +70,8 @@ Preferred communication style: Simple, everyday language.
 - **Development**: `npm run dev` - runs tsx with Vite dev server
 - **Production Build**: `npm run build` - builds client with Vite, bundles server with esbuild
 - **Database**: `npm run db:push` - pushes schema changes to database
+- **Testing**: `npx vitest run` - runs all 26 automated tests (scoring + API)
+- **Testing (watch mode)**: `npx vitest` - runs tests in watch mode during development
 
 ## External Dependencies
 
@@ -94,3 +96,5 @@ Preferred communication style: Simple, everyday language.
 - **tsx** - TypeScript execution for Node.js
 - **esbuild** - Production server bundling
 - **Tailwind CSS** - Utility-first CSS framework
+- **Vitest** - Test runner for unit and integration tests
+- **Supertest** - HTTP assertion library for API testing
