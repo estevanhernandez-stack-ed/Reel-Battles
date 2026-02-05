@@ -2,8 +2,9 @@ import {
   type User, type InsertUser,
   type TriviaQuestion, type InsertTriviaQuestion,
   type Movie, type InsertMovie,
+  type MovieAthlete, type InsertMovieAthlete,
   type GameSession, type InsertGameSession,
-  users, triviaQuestions, movies, gameSessions
+  users, triviaQuestions, movies, movieAthletes, gameSessions
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";

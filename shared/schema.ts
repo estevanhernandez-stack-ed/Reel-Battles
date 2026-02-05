@@ -32,6 +32,26 @@ export const movies = pgTable("movies", {
   synopsis: text("synopsis"),
 });
 
+export const movieAthletes = pgTable("movie_athletes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  movie: text("movie").notNull(),
+  movieYear: integer("movie_year").notNull(),
+  sport: text("sport").notNull(),
+  actor: text("actor").notNull(),
+  archetype: text("archetype").notNull(),
+  bio: text("bio"),
+  quote: text("quote"),
+  athleticism: integer("athleticism").notNull().default(50),
+  clutch: integer("clutch").notNull().default(50),
+  leadership: integer("leadership").notNull().default(50),
+  heart: integer("heart").notNull().default(50),
+  skill: integer("skill").notNull().default(50),
+  intimidation: integer("intimidation").notNull().default(50),
+  teamwork: integer("teamwork").notNull().default(50),
+  charisma: integer("charisma").notNull().default(50),
+});
+
 export const gameSessions = pgTable("game_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   gameType: text("game_type").notNull(),
@@ -53,6 +73,10 @@ export const insertMovieSchema = createInsertSchema(movies).omit({
   id: true,
 });
 
+export const insertMovieAthleteSchema = createInsertSchema(movieAthletes).omit({
+  id: true,
+});
+
 export const insertGameSessionSchema = createInsertSchema(gameSessions).omit({
   id: true,
   createdAt: true,
@@ -66,6 +90,9 @@ export type TriviaQuestion = typeof triviaQuestions.$inferSelect;
 
 export type InsertMovie = z.infer<typeof insertMovieSchema>;
 export type Movie = typeof movies.$inferSelect;
+
+export type InsertMovieAthlete = z.infer<typeof insertMovieAthleteSchema>;
+export type MovieAthlete = typeof movieAthletes.$inferSelect;
 
 export type InsertGameSession = z.infer<typeof insertGameSessionSchema>;
 export type GameSession = typeof gameSessions.$inferSelect;
