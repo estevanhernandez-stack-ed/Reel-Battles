@@ -34,11 +34,17 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Layer
 - **Database**: PostgreSQL (connection via DATABASE_URL environment variable)
+- **Firebase Firestore**: Trivia questions fetched from `guestbuzz-cineperks` project (publicly readable, no auth needed)
+  - Collection: `questionBank` - 38,500+ movie trivia questions with text, options, correctAnswerIndex, movieTitle, difficulty, hint
+  - Cached in-memory with 30-minute TTL, pre-warmed on server startup via background fetch
+  - Fallback to local PostgreSQL trivia_questions table if Firebase is unavailable
+  - Service: `server/firebase.ts` - handles Firestore REST API communication, caching, and data transformation
 - **Schema Location**: `shared/schema.ts` - shared between frontend and backend
 - **Tables**:
   - `users` - User accounts with username/password
-  - `trivia_questions` - Quiz questions with correct/wrong answers, category, difficulty
+  - `trivia_questions` - Quiz questions (fallback for Firebase), with correct/wrong answers, category, difficulty
   - `movies` - Movie data including title, year, poster, opening weekend, genre
+  - `movie_athletes` - 58 movie characters with 8 Madden-like stats + wildcard abilities (name, category, value)
   - `game_sessions` - Game history tracking scores and game types
 
 ### Project Structure
