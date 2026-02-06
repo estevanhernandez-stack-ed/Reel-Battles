@@ -5,8 +5,103 @@
 CineGame is a native mobile app (React Native / Expo) for the Replit Mobile App Challenge hackathon. It offers three interactive game modes for film enthusiasts plus a comprehensive engagement system:
 
 1. **Trivia Quiz** - Multiple-choice movie knowledge questions across categories and difficulty levels (38,505 questions)
-2. **Movie Draft** - Draft movie characters by archetype, then team battle with weighted stats and synergy bonuses
+2. **Movie Draft** - Draft movie characters by archetype, then team battle with weighted stats and synergy bonuses (see detailed docs below)
 3. **Box Office Heads Up** - Guess which movie had the bigger opening weekend
+
+### Movie Draft - Card Battle Mode (Detailed)
+
+The Movie Draft is a strategic card-battle game where players draft a team of 5 iconic movie characters and battle against an AI opponent. It plays like a fantasy sports draft crossed with a card game.
+
+#### Characters (Movie Athletes)
+- 58 characters from famous sports movies, stored in the `movie_athletes` table
+- Each character has: name, movie, year, sport, actor, archetype, bio, quote
+- Each character has **8 Madden-style stats** (rated 0-99):
+  - **Heart** (HRT) - Determination and willpower
+  - **Clutch** (CLT) - Performance under pressure
+  - **Teamwork** (TMW) - Ability to work with others
+  - **Leadership** (LDR) - Ability to inspire and lead
+  - **Athleticism** (ATH) - Physical ability
+  - **Skill** (SKL) - Technical proficiency
+  - **Intimidation** (INT) - Ability to intimidate opponents
+  - **Charisma** (CHR) - Personal magnetism
+- Each character also has an optional **Wildcard** ability (wildcardName, wildcardCategory, wildcardValue)
+
+#### 7 Archetypes
+Characters are classified into one of 7 archetypes, each with a distinct color:
+| Archetype | Color | Description |
+|-----------|-------|-------------|
+| Captain | Blue/Indigo | Team leaders who rally the group |
+| Natural | Green | Born athletes with raw talent |
+| Underdog | Amber/Yellow | Unlikely heroes who defy expectations |
+| Veteran | Purple | Experienced players with wisdom |
+| Villain | Red | Antagonists with intimidating presence |
+| Teammate | Cyan/Teal | Supportive players who elevate others |
+| Wildcard | Pink/Fuchsia | Unpredictable game-changers |
+
+#### Draft Phase
+1. All 58 athletes are shuffled into a random pool
+2. Each round presents athletes filtered by archetype (cycles through: Captain, Natural, Underdog, Veteran, Villain, Teammate, Wildcard)
+3. Up to 6 athletes are shown per round
+4. Player picks one character; the AI opponent randomly picks from the remaining available characters in that round
+5. Both picks are removed from the pool
+6. Draft continues for **5 rounds** until both teams have 5 characters
+7. **Stats are hidden** during the draft phase - players must make decisions based on character name, movie, actor, sport, archetype, and bio only
+8. Team size counter shows progress (e.g., "3/5")
+
+#### Battle Phase (Server-Side Scoring)
+After drafting, the battle is calculated server-side via `POST /api/athletes/battle`:
+
+**Weighted Score Formula** (per character):
+Each stat is multiplied by its weight, then summed:
+```
+Score = (Heart × 1.3) + (Clutch × 1.2) + (Teamwork × 1.2) + (Leadership × 1.1)
+      + (Athleticism × 1.0) + (Skill × 1.0) + (Intimidation × 0.8) + (Charisma × 0.7)
+```
+Heart, Clutch, and Teamwork are the highest-weighted stats, rewarding characters with determination, pressure performance, and cooperation. Intimidation and Charisma are lowest-weighted.
+
+**Team Score** = Sum of all 5 character weighted scores + Synergy Bonuses
+
+#### Synergy Bonuses
+Teams earn bonus points for specific archetype combinations:
+
+| Synergy | Requirement | Bonus | Description |
+|---------|------------|-------|-------------|
+| Captain's Command | Have a Captain | +50 pts | A Captain rallies the whole team |
+| Mentor & Protege | Veteran + Underdog | +30 pts | A Veteran guides the Underdog to greatness |
+| Natural Chemistry | Natural + Teammate | +25 pts | A Natural and Teammate create perfect synergy |
+| Diverse Roster | 4+ unique archetypes | +40 pts | Versatility from varied team composition |
+
+Multiple synergies can stack. Maximum possible synergy: +145 points (all four active).
+
+#### Battle Results
+The results screen shows three tabs:
+
+**Overview Tab:**
+- Victory/Defeat/Draw with final scores (base score + synergy breakdown)
+- Head-to-head matchup record (W-L count)
+- MVP for each team (highest individual scorer)
+- Synergy bonus breakdown showing which bonuses were active/inactive for each team
+- Battle Insights: closest matchup, biggest mismatch, synergy advantage
+
+**Matchups Tab:**
+- 1v1 comparison of each player's character vs opponent's corresponding character
+- Shows individual scores, winner indicator, and margin
+
+**Stats Tab:**
+- Team stat averages (average of each stat across all 5 characters)
+- Side-by-side comparison of team strengths
+
+#### Haptic Feedback (Mobile)
+- Light impact on draft pick selection
+- Success notification on victory
+- Error notification on defeat
+
+#### Share Results
+Players can share their battle outcome including final score and team lineup via the native Share API.
+
+#### Achievements
+- **Draft Champion** - Win your first draft battle
+- **Draft Dominator** - Win 3 draft battles
 
 ### Engagement Features
 - **Player Profiles** - Username-based profiles stored locally (AsyncStorage) and server-side, shown in header and stats
