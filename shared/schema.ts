@@ -21,6 +21,7 @@ export const triviaQuestions = pgTable("trivia_questions", {
   hint: text("hint"),
   movieTitle: text("movie_title"),
   firebaseId: text("firebase_id"),
+  tier: text("tier").default("niche"),
 });
 
 export const movies = pgTable("movies", {
