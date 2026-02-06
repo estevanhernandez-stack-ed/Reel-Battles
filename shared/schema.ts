@@ -34,6 +34,7 @@ export const movies = pgTable("movies", {
   director: text("director"),
   rating: text("rating"),
   synopsis: text("synopsis"),
+  imdbId: text("imdb_id"),
 });
 
 export const movieAthletes = pgTable("movie_athletes", {
