@@ -15,8 +15,10 @@ const STAT_WEIGHTS = {
   charisma: 0.7,
 };
 
+const WILDCARD_WEIGHT = 0.5;
+
 export function calculateWeightedScore(athlete: MovieAthlete): number {
-  return (
+  const baseScore =
     athlete.athleticism * STAT_WEIGHTS.athleticism +
     athlete.clutch * STAT_WEIGHTS.clutch +
     athlete.leadership * STAT_WEIGHTS.leadership +
@@ -24,8 +26,9 @@ export function calculateWeightedScore(athlete: MovieAthlete): number {
     athlete.skill * STAT_WEIGHTS.skill +
     athlete.intimidation * STAT_WEIGHTS.intimidation +
     athlete.teamwork * STAT_WEIGHTS.teamwork +
-    athlete.charisma * STAT_WEIGHTS.charisma
-  );
+    athlete.charisma * STAT_WEIGHTS.charisma;
+  const wildcardBonus = (athlete.wildcardValue || 0) * WILDCARD_WEIGHT;
+  return baseScore + wildcardBonus;
 }
 
 export function calculateTeamScore(athletes: MovieAthlete[]): number {
@@ -90,7 +93,137 @@ function getAthleteStatBreakdown(athlete: MovieAthlete) {
     { name: "Intimidation", value: athlete.intimidation, weight: STAT_WEIGHTS.intimidation, weighted: Math.round(athlete.intimidation * STAT_WEIGHTS.intimidation) },
     { name: "Charisma", value: athlete.charisma, weight: STAT_WEIGHTS.charisma, weighted: Math.round(athlete.charisma * STAT_WEIGHTS.charisma) },
   ];
+  if (athlete.wildcardName && athlete.wildcardValue) {
+    stats.push({ name: athlete.wildcardName, value: athlete.wildcardValue, weight: WILDCARD_WEIGHT, weighted: Math.round(athlete.wildcardValue * WILDCARD_WEIGHT) });
+  }
   return stats;
+}
+
+interface BattleInsight {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
+function generateBattleInsights(
+  playerTeam: MovieAthlete[],
+  opponentTeam: MovieAthlete[],
+  playerBreakdown: { name: string; archetype: string; score: number; stats: { name: string; value: number }[] }[],
+  opponentBreakdown: { name: string; archetype: string; score: number; stats: { name: string; value: number }[] }[],
+  matchups: { player: { name: string; score: number }; opponent: { name: string; score: number }; winner: string; margin: number }[],
+  playerSynergyTotal: number,
+  opponentSynergyTotal: number,
+): BattleInsight[] {
+  const insights: BattleInsight[] = [];
+
+  const closestMatchup = matchups.length > 0 ? [...matchups].sort((a, b) => a.margin - b.margin)[0] : null;
+  const biggestBlowout = matchups.length > 0 ? [...matchups].sort((a, b) => b.margin - a.margin)[0] : null;
+
+  if (closestMatchup && closestMatchup.margin <= 30) {
+    insights.push({
+      type: "closest",
+      icon: "sparkles",
+      title: "Nail-Biter",
+      description: `${closestMatchup.player.name} vs ${closestMatchup.opponent.name} was decided by just ${closestMatchup.margin} pts`,
+    });
+  }
+
+  if (biggestBlowout && biggestBlowout !== closestMatchup && biggestBlowout.margin >= 50) {
+    const dominator = biggestBlowout.winner === "player" ? biggestBlowout.player.name : biggestBlowout.opponent.name;
+    insights.push({
+      type: "blowout",
+      icon: "zap",
+      title: "Biggest Mismatch",
+      description: `${dominator} dominated their matchup by ${biggestBlowout.margin} pts`,
+    });
+  }
+
+  const avgStat = (team: MovieAthlete[], stat: keyof typeof STAT_WEIGHTS) =>
+    team.reduce((sum, a) => sum + (a[stat] as number), 0) / team.length;
+
+  const playerAvgHeart = avgStat(playerTeam, "heart");
+  const playerAvgLeadership = avgStat(playerTeam, "leadership");
+  const opponentAvgHeart = avgStat(opponentTeam, "heart");
+  const opponentAvgLeadership = avgStat(opponentTeam, "leadership");
+  const playerWorkEthic = playerAvgHeart + playerAvgLeadership;
+  const opponentWorkEthic = opponentAvgHeart + opponentAvgLeadership;
+
+  if (playerWorkEthic > opponentWorkEthic + 20) {
+    insights.push({
+      type: "work_ethic",
+      icon: "heart",
+      title: "Work Ethic Advantage",
+      description: `Your team out-worked the opponent with superior Heart and Leadership, grinding out the win through sheer determination`,
+    });
+  } else if (opponentWorkEthic > playerWorkEthic + 20) {
+    insights.push({
+      type: "work_ethic",
+      icon: "heart",
+      title: "Out-Worked",
+      description: `The opponent's team had more Heart and Leadership, grinding through with pure determination`,
+    });
+  }
+
+  const playerAvgIntimidation = avgStat(playerTeam, "intimidation");
+  const playerAvgTeamwork = avgStat(playerTeam, "teamwork");
+  const opponentAvgIntimidation = avgStat(opponentTeam, "intimidation");
+  const opponentAvgTeamwork = avgStat(opponentTeam, "teamwork");
+
+  const playerVillainCount = playerTeam.filter(a => a.archetype === "villain").length;
+  const opponentVillainCount = opponentTeam.filter(a => a.archetype === "villain").length;
+
+  if (opponentVillainCount >= 2 && opponentAvgIntimidation > 80 && opponentAvgTeamwork < 50) {
+    insights.push({
+      type: "villain_fallacy",
+      icon: "alert",
+      title: "The Villain Fallacy",
+      description: `The opponent stacked Villains for intimidation, but Intimidation (0.8x) is low-weighted and their Teamwork suffered`,
+    });
+  } else if (playerVillainCount >= 2 && playerAvgIntimidation > 80 && playerAvgTeamwork < 50) {
+    insights.push({
+      type: "villain_fallacy",
+      icon: "alert",
+      title: "The Villain Fallacy",
+      description: `Your team relied on intimidation, but Intimidation (0.8x) is one of the lowest-weighted stats and cost you Teamwork`,
+    });
+  }
+
+  const playerWildcardTotal = playerTeam.reduce((sum, a) => sum + ((a.wildcardValue || 0) * WILDCARD_WEIGHT), 0);
+  const opponentWildcardTotal = opponentTeam.reduce((sum, a) => sum + ((a.wildcardValue || 0) * WILDCARD_WEIGHT), 0);
+  const wildcardDiff = Math.round(playerWildcardTotal - opponentWildcardTotal);
+
+  if (Math.abs(wildcardDiff) >= 10) {
+    const bestWildcard = wildcardDiff > 0
+      ? playerTeam.reduce((best, a) => ((a.wildcardValue || 0) > (best.wildcardValue || 0) ? a : best))
+      : opponentTeam.reduce((best, a) => ((a.wildcardValue || 0) > (best.wildcardValue || 0) ? a : best));
+    if (bestWildcard.wildcardName) {
+      insights.push({
+        type: "wildcard",
+        icon: "star",
+        title: "Wildcard Impact",
+        description: `${bestWildcard.name}'s "${bestWildcard.wildcardName}" ability (${bestWildcard.wildcardValue}) gave ${wildcardDiff > 0 ? "your" : "the opponent's"} team a ${Math.abs(wildcardDiff)} pt wildcard edge`,
+      });
+    }
+  }
+
+  if (playerSynergyTotal > opponentSynergyTotal) {
+    insights.push({
+      type: "synergy",
+      icon: "users",
+      title: "Better Chemistry",
+      description: `Your team composition earned ${playerSynergyTotal - opponentSynergyTotal} more synergy points than the opponent`,
+    });
+  } else if (opponentSynergyTotal > playerSynergyTotal) {
+    insights.push({
+      type: "synergy",
+      icon: "users",
+      title: "Synergy Gap",
+      description: `The opponent's team composition earned ${opponentSynergyTotal - playerSynergyTotal} more synergy points`,
+    });
+  }
+
+  return insights;
 }
 
 const ACHIEVEMENT_DEFINITIONS = [
@@ -333,6 +466,16 @@ export async function registerRoutes(
         });
       };
 
+      const battleInsights = generateBattleInsights(
+        playerTeam,
+        opponentTeam,
+        playerDetailedBreakdown,
+        opponentDetailedBreakdown,
+        matchups,
+        playerSynergyTotal,
+        opponentSynergyTotal,
+      );
+
       const result = {
         playerScore: Math.round(playerScore),
         opponentScore: Math.round(opponentScore),
@@ -351,6 +494,7 @@ export async function registerRoutes(
         matchups,
         playerTeamStats: teamStatAverages(playerDetailedBreakdown),
         opponentTeamStats: teamStatAverages(opponentDetailedBreakdown),
+        battleInsights,
       };
       
       res.json(result);

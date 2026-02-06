@@ -26,6 +26,8 @@ import {
   Check,
   X,
   Minus,
+  Heart,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { MovieAthlete } from "@shared/schema";
@@ -125,6 +127,13 @@ interface AthleteBreakdown {
   wildcardValue: number | null;
 }
 
+interface BattleInsight {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
 interface BattleResult {
   playerScore: number;
   opponentScore: number;
@@ -143,6 +152,7 @@ interface BattleResult {
   matchups: { player: { name: string; archetype: string; score: number }; opponent: { name: string; archetype: string; score: number }; winner: string; margin: number }[];
   playerTeamStats: { name: string; average: number }[];
   opponentTeamStats: { name: string; average: number }[];
+  battleInsights: BattleInsight[];
 }
 
 interface DraftState {
@@ -318,8 +328,7 @@ export default function Draft() {
     const playerWon = r.winner === "player";
     const matchupsWon = matchups.filter((m: { winner: string }) => m.winner === "player").length;
     const matchupsLost = matchups.filter((m: { winner: string }) => m.winner === "opponent").length;
-    const closestMatchup = matchups.length > 0 ? [...matchups].sort((a: { margin: number }, b: { margin: number }) => a.margin - b.margin)[0] : null;
-    const biggestBlowout = matchups.length > 0 ? [...matchups].sort((a: { margin: number }, b: { margin: number }) => b.margin - a.margin)[0] : null;
+    const battleInsights = r.battleInsights || [];
     
     return (
       <div className="min-h-screen bg-background">
@@ -477,44 +486,47 @@ export default function Draft() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold">Battle Insights</span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      {closestMatchup && (
-                        <div className="flex items-start gap-2">
-                          <Sparkles className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground">
-                            Closest matchup: <span className="text-foreground font-medium">{closestMatchup.player.name}</span> vs <span className="text-foreground font-medium">{closestMatchup.opponent.name}</span> (only {closestMatchup.margin} pts apart)
-                          </span>
-                        </div>
-                      )}
-                      {biggestBlowout && biggestBlowout !== closestMatchup && (
-                        <div className="flex items-start gap-2">
-                          <Zap className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground">
-                            Biggest mismatch: <span className="text-foreground font-medium">{biggestBlowout.winner === "player" ? biggestBlowout.player.name : biggestBlowout.opponent.name}</span> dominated by {biggestBlowout.margin} pts
-                          </span>
-                        </div>
-                      )}
-                      {r.playerSynergyTotal > r.opponentSynergyTotal && (
-                        <div className="flex items-start gap-2">
-                          <Users className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground">Your team composition earned <span className="text-foreground font-medium">{r.playerSynergyTotal - r.opponentSynergyTotal} more synergy</span> points than the opponent</span>
-                        </div>
-                      )}
-                      {r.opponentSynergyTotal > r.playerSynergyTotal && (
-                        <div className="flex items-start gap-2">
-                          <Users className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground">The opponent's team comp earned <span className="text-foreground font-medium">{r.opponentSynergyTotal - r.playerSynergyTotal} more synergy</span> points</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                {battleInsights.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">Battle Insights</span>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {battleInsights.map((insight: BattleInsight, i: number) => {
+                          const iconMap: Record<string, typeof Sparkles> = {
+                            sparkles: Sparkles,
+                            zap: Zap,
+                            heart: Heart,
+                            alert: AlertTriangle,
+                            star: Star,
+                            users: Users,
+                          };
+                          const colorMap: Record<string, string> = {
+                            closest: "text-amber-500",
+                            blowout: "text-primary",
+                            work_ethic: "text-rose-500",
+                            villain_fallacy: "text-red-500",
+                            wildcard: "text-fuchsia-500",
+                            synergy: r.playerSynergyTotal >= r.opponentSynergyTotal ? "text-green-500" : "text-red-500",
+                          };
+                          const IconComponent = iconMap[insight.icon] || Sparkles;
+                          const iconColor = colorMap[insight.type] || "text-muted-foreground";
+                          return (
+                            <div key={i} className="flex items-start gap-2" data-testid={`insight-${insight.type}`}>
+                              <IconComponent className={`h-4 w-4 ${iconColor} mt-0.5 shrink-0`} />
+                              <div>
+                                <span className="text-foreground font-medium">{insight.title}: </span>
+                                <span className="text-muted-foreground">{insight.description}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </motion.div>
             )}
 

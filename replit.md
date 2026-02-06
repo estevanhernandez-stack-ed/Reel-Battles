@@ -52,12 +52,13 @@ Characters are classified into one of 7 archetypes, each with a distinct color:
 After drafting, the battle is calculated server-side via `POST /api/athletes/battle`:
 
 **Weighted Score Formula** (per character):
-Each stat is multiplied by its weight, then summed:
+Each stat is multiplied by its weight, then summed, plus the wildcard bonus:
 ```
 Score = (Heart × 1.3) + (Clutch × 1.2) + (Teamwork × 1.2) + (Leadership × 1.1)
       + (Athleticism × 1.0) + (Skill × 1.0) + (Intimidation × 0.8) + (Charisma × 0.7)
+      + (Wildcard × 0.5)
 ```
-Heart, Clutch, and Teamwork are the highest-weighted stats, rewarding characters with determination, pressure performance, and cooperation. Intimidation and Charisma are lowest-weighted.
+Heart, Clutch, and Teamwork are the highest-weighted stats, rewarding characters with determination, pressure performance, and cooperation. Intimidation and Charisma are lowest-weighted. Each character's unique Wildcard ability adds a small but meaningful bonus (0.5x weight).
 
 **Team Score** = Sum of all 5 character weighted scores + Synergy Bonuses
 
@@ -81,7 +82,13 @@ The results screen shows three tabs:
 - Head-to-head matchup record (W-L count)
 - MVP for each team (highest individual scorer)
 - Synergy bonus breakdown showing which bonuses were active/inactive for each team
-- Battle Insights: closest matchup, biggest mismatch, synergy advantage
+- Battle Insights (server-generated, thematic):
+  - **Nail-Biter** - When the closest matchup is within 30 pts
+  - **Biggest Mismatch** - When the largest matchup gap exceeds 50 pts
+  - **Work Ethic Advantage / Out-Worked** - When one team's Heart + Leadership dominates
+  - **The Villain Fallacy** - When a team stacked Villains for Intimidation but suffered from low Teamwork and low stat weight
+  - **Wildcard Impact** - When wildcard abilities created a significant scoring edge
+  - **Better Chemistry / Synergy Gap** - When synergy bonuses differ between teams
 
 **Matchups Tab:**
 - 1v1 comparison of each player's character vs opponent's corresponding character

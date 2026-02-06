@@ -29,7 +29,7 @@ function makeAthlete(overrides: Partial<MovieAthlete> = {}): MovieAthlete {
 }
 
 describe("calculateWeightedScore", () => {
-  it("calculates the correct weighted score for default stats", () => {
+  it("calculates the correct weighted score for default stats (no wildcard)", () => {
     const athlete = makeAthlete();
     const score = calculateWeightedScore(athlete);
     const expected =
@@ -40,8 +40,16 @@ describe("calculateWeightedScore", () => {
       50 * 1.0 + // skill
       50 * 0.8 + // intimidation
       50 * 1.2 + // teamwork
-      50 * 0.7;  // charisma
+      50 * 0.7 + // charisma
+      0 * 0.5;   // wildcard (0)
     expect(score).toBe(expected);
+  });
+
+  it("includes wildcard value in the score", () => {
+    const withoutWildcard = makeAthlete({ wildcardValue: 0 });
+    const withWildcard = makeAthlete({ wildcardName: "Iron Chin", wildcardValue: 97 });
+    const diff = calculateWeightedScore(withWildcard) - calculateWeightedScore(withoutWildcard);
+    expect(diff).toBeCloseTo(97 * 0.5);
   });
 
   it("weights heart and clutch higher than charisma and intimidation", () => {
@@ -56,18 +64,27 @@ describe("calculateWeightedScore", () => {
     const zeroAthlete = makeAthlete({
       athleticism: 0, clutch: 0, leadership: 0, heart: 0,
       skill: 0, intimidation: 0, teamwork: 0, charisma: 0,
+      wildcardValue: 0,
     });
     expect(calculateWeightedScore(zeroAthlete)).toBe(0);
   });
 
-  it("handles max stats", () => {
+  it("handles max stats with wildcard", () => {
     const maxAthlete = makeAthlete({
       athleticism: 99, clutch: 99, leadership: 99, heart: 99,
       skill: 99, intimidation: 99, teamwork: 99, charisma: 99,
+      wildcardValue: 99,
     });
     const score = calculateWeightedScore(maxAthlete);
-    expect(score).toBeGreaterThan(0);
-    expect(score).toBe(99 * (1.0 + 1.2 + 1.1 + 1.3 + 1.0 + 0.8 + 1.2 + 0.7));
+    const expectedBase = 99 * (1.0 + 1.2 + 1.1 + 1.3 + 1.0 + 0.8 + 1.2 + 0.7);
+    const expectedWildcard = 99 * 0.5;
+    expect(score).toBe(expectedBase + expectedWildcard);
+  });
+
+  it("wildcard value of null treated as 0", () => {
+    const athlete = makeAthlete({ wildcardValue: null as any });
+    const baseOnly = makeAthlete({ wildcardValue: 0 });
+    expect(calculateWeightedScore(athlete)).toBe(calculateWeightedScore(baseOnly));
   });
 });
 
@@ -123,5 +140,18 @@ describe("calculateTeamScore", () => {
     const expectedBonus = 50 + 30 + 25 + 40;
     const teamScore = calculateTeamScore(team);
     expect(teamScore).toBe(rawTotal + expectedBonus);
+  });
+
+  it("includes wildcard values in team score", () => {
+    const teamWithWildcards = [
+      makeAthlete({ id: "1", archetype: "underdog", wildcardName: "Iron Chin", wildcardValue: 97 }),
+      makeAthlete({ id: "2", archetype: "underdog", wildcardName: "Crane Kick", wildcardValue: 98 }),
+    ];
+    const teamWithout = [
+      makeAthlete({ id: "1", archetype: "underdog", wildcardValue: 0 }),
+      makeAthlete({ id: "2", archetype: "underdog", wildcardValue: 0 }),
+    ];
+    const diff = calculateTeamScore(teamWithWildcards) - calculateTeamScore(teamWithout);
+    expect(diff).toBeCloseTo((97 + 98) * 0.5);
   });
 });
