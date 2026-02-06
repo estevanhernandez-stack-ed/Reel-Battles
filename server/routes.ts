@@ -35,15 +35,62 @@ export function calculateTeamScore(athletes: MovieAthlete[]): number {
   return totalScore + synergyBonus;
 }
 
-function calculateSynergyBonus(athletes: MovieAthlete[]): number {
-  let bonus = 0;
+interface SynergyDetail {
+  name: string;
+  description: string;
+  bonus: number;
+  active: boolean;
+}
+
+function calculateSynergyDetails(athletes: MovieAthlete[]): SynergyDetail[] {
   const archetypes = athletes.map(a => a.archetype);
-  if (archetypes.includes("captain")) bonus += 50;
-  if (archetypes.includes("veteran") && archetypes.includes("underdog")) bonus += 30;
-  if (archetypes.includes("natural") && archetypes.includes("teammate")) bonus += 25;
   const uniqueArchetypes = new Set(archetypes);
-  if (uniqueArchetypes.size >= 4) bonus += 40;
-  return bonus;
+  return [
+    {
+      name: "Captain's Command",
+      description: "Having a Captain on the team rallies everyone",
+      bonus: 50,
+      active: archetypes.includes("captain"),
+    },
+    {
+      name: "Mentor & Protege",
+      description: "A Veteran guides the Underdog to greatness",
+      bonus: 30,
+      active: archetypes.includes("veteran") && archetypes.includes("underdog"),
+    },
+    {
+      name: "Natural Chemistry",
+      description: "A Natural and a Teammate create perfect synergy",
+      bonus: 25,
+      active: archetypes.includes("natural") && archetypes.includes("teammate"),
+    },
+    {
+      name: "Diverse Roster",
+      description: "4+ different archetypes bring versatility",
+      bonus: 40,
+      active: uniqueArchetypes.size >= 4,
+    },
+  ];
+}
+
+function calculateSynergyBonus(athletes: MovieAthlete[]): number {
+  return calculateSynergyDetails(athletes)
+    .filter(s => s.active)
+    .reduce((sum, s) => sum + s.bonus, 0);
+}
+
+function getAthleteStatBreakdown(athlete: MovieAthlete) {
+  const stats = [
+    { name: "Heart", value: athlete.heart, weight: STAT_WEIGHTS.heart, weighted: Math.round(athlete.heart * STAT_WEIGHTS.heart) },
+    { name: "Clutch", value: athlete.clutch, weight: STAT_WEIGHTS.clutch, weighted: Math.round(athlete.clutch * STAT_WEIGHTS.clutch) },
+    { name: "Teamwork", value: athlete.teamwork, weight: STAT_WEIGHTS.teamwork, weighted: Math.round(athlete.teamwork * STAT_WEIGHTS.teamwork) },
+    { name: "Leadership", value: athlete.leadership, weight: STAT_WEIGHTS.leadership, weighted: Math.round(athlete.leadership * STAT_WEIGHTS.leadership) },
+    { name: "Athleticism", value: athlete.athleticism, weight: STAT_WEIGHTS.athleticism, weighted: Math.round(athlete.athleticism * STAT_WEIGHTS.athleticism) },
+    { name: "Skill", value: athlete.skill, weight: STAT_WEIGHTS.skill, weighted: Math.round(athlete.skill * STAT_WEIGHTS.skill) },
+    { name: "Intimidation", value: athlete.intimidation, weight: STAT_WEIGHTS.intimidation, weighted: Math.round(athlete.intimidation * STAT_WEIGHTS.intimidation) },
+    { name: "Charisma", value: athlete.charisma, weight: STAT_WEIGHTS.charisma, weighted: Math.round(athlete.charisma * STAT_WEIGHTS.charisma) },
+  ];
+  return stats;
 }
 
 const ACHIEVEMENT_DEFINITIONS = [
@@ -230,13 +277,76 @@ export async function registerRoutes(
       
       const playerScore = calculateTeamScore(playerTeam);
       const opponentScore = calculateTeamScore(opponentTeam);
-      
+
+      const playerSynergies = calculateSynergyDetails(playerTeam);
+      const opponentSynergies = calculateSynergyDetails(opponentTeam);
+      const playerSynergyTotal = playerSynergies.filter(s => s.active).reduce((sum, s) => sum + s.bonus, 0);
+      const opponentSynergyTotal = opponentSynergies.filter(s => s.active).reduce((sum, s) => sum + s.bonus, 0);
+
+      const playerBaseScore = playerTeam.reduce((sum, a) => sum + calculateWeightedScore(a), 0);
+      const opponentBaseScore = opponentTeam.reduce((sum, a) => sum + calculateWeightedScore(a), 0);
+
+      const playerDetailedBreakdown = playerTeam.map(a => ({
+        name: a.name,
+        movie: a.movie,
+        archetype: a.archetype,
+        score: Math.round(calculateWeightedScore(a)),
+        stats: getAthleteStatBreakdown(a),
+        wildcardName: a.wildcardName,
+        wildcardValue: a.wildcardValue,
+      }));
+      const opponentDetailedBreakdown = opponentTeam.map(a => ({
+        name: a.name,
+        movie: a.movie,
+        archetype: a.archetype,
+        score: Math.round(calculateWeightedScore(a)),
+        stats: getAthleteStatBreakdown(a),
+        wildcardName: a.wildcardName,
+        wildcardValue: a.wildcardValue,
+      }));
+
+      const playerMvp = playerDetailedBreakdown.reduce((best, cur) => cur.score > best.score ? cur : best);
+      const opponentMvp = opponentDetailedBreakdown.reduce((best, cur) => cur.score > best.score ? cur : best);
+
+      const matchups = playerDetailedBreakdown.map((p, i) => {
+        const o = opponentDetailedBreakdown[i] || opponentDetailedBreakdown[opponentDetailedBreakdown.length - 1];
+        return {
+          player: { name: p.name, archetype: p.archetype, score: p.score },
+          opponent: { name: o.name, archetype: o.archetype, score: o.score },
+          winner: p.score > o.score ? "player" : p.score < o.score ? "opponent" : "tie",
+          margin: Math.abs(p.score - o.score),
+        };
+      });
+
+      const teamStatAverages = (team: typeof playerDetailedBreakdown) => {
+        const statNames = team[0]?.stats.map(s => s.name) || [];
+        return statNames.map(name => {
+          const avg = team.reduce((sum, a) => {
+            const stat = a.stats.find(s => s.name === name);
+            return sum + (stat?.value || 0);
+          }, 0) / team.length;
+          return { name, average: Math.round(avg) };
+        });
+      };
+
       const result = {
         playerScore: Math.round(playerScore),
         opponentScore: Math.round(opponentScore),
         winner: playerScore > opponentScore ? "player" : playerScore < opponentScore ? "opponent" : "tie",
-        playerBreakdown: playerTeam.map(a => ({ name: a.name, score: Math.round(calculateWeightedScore(a)) })),
-        opponentBreakdown: opponentTeam.map(a => ({ name: a.name, score: Math.round(calculateWeightedScore(a)) })),
+        margin: Math.abs(Math.round(playerScore) - Math.round(opponentScore)),
+        playerBaseScore: Math.round(playerBaseScore),
+        opponentBaseScore: Math.round(opponentBaseScore),
+        playerSynergyTotal,
+        opponentSynergyTotal,
+        playerSynergies,
+        opponentSynergies,
+        playerBreakdown: playerDetailedBreakdown,
+        opponentBreakdown: opponentDetailedBreakdown,
+        playerMvp,
+        opponentMvp,
+        matchups,
+        playerTeamStats: teamStatAverages(playerDetailedBreakdown),
+        opponentTeamStats: teamStatAverages(opponentDetailedBreakdown),
       };
       
       res.json(result);
