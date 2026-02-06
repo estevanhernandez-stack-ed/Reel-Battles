@@ -103,13 +103,13 @@ export default function Home() {
           {gameModesData.map((mode) => {
             const IconComponent = mode.icon;
             return (
-              <motion.div key={mode.id} variants={cardVariants}>
-                <Link href={mode.href}>
+              <motion.div key={mode.id} variants={cardVariants} className="h-full">
+                <Link href={mode.href} className="h-full">
                   <Card
-                    className="group cursor-pointer h-full hover-elevate active-elevate-2 overflow-visible transition-all duration-300"
+                    className="group cursor-pointer h-full flex flex-col hover-elevate active-elevate-2 overflow-visible transition-all duration-300"
                     data-testid={`card-gamemode-${mode.id}`}
                   >
-                    <CardHeader className="pb-4">
+                    <CardHeader className="pb-4 flex-1">
                       <div className={`w-14 h-14 rounded-md bg-gradient-to-br ${mode.color} flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-300`}>
                         <IconComponent className="h-7 w-7 text-white" />
                       </div>
@@ -123,8 +123,8 @@ export default function Home() {
                         {mode.description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <Button className="w-full group-hover:bg-primary/90" data-testid={`button-play-${mode.id}`}>
+                    <CardContent className="pt-0">
+                      <Button className="w-full" data-testid={`button-play-${mode.id}`}>
                         <Star className="mr-2 h-4 w-4" />
                         Play Now
                       </Button>
