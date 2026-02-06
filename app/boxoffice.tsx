@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator, Image, Share } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Spacing, FontSize, BorderRadius } from "../mobile/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch, apiPost } from "../mobile/constants/api";
+import { useProfile } from "../mobile/hooks/useProfile";
+import * as Haptics from "expo-haptics";
 
 interface Movie {
   id: string;
@@ -29,6 +31,7 @@ export default function BoxOfficeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const router = useRouter();
+  const { profileId } = useProfile();
 
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
@@ -65,7 +68,12 @@ export default function BoxOfficeScreen() {
     setSelected(selectedId);
     setShowResult(true);
     setIsCorrect(correct);
-    if (correct) setScore((s) => s + 1);
+    if (correct) {
+      setScore((s) => s + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
     setStreak(newStreak);
     setBestStreak(Math.max(bestStreak, newStreak));
   };
@@ -73,7 +81,7 @@ export default function BoxOfficeScreen() {
   const handleNext = () => {
     if (round >= TOTAL_ROUNDS) {
       setGameOver(true);
-      apiPost("/api/games", { gameType: "boxoffice", score: score, totalQuestions: TOTAL_ROUNDS }).catch(() => {});
+      apiPost("/api/games", { profileId: profileId || undefined, gameType: "boxoffice", score: score, totalQuestions: TOTAL_ROUNDS }).catch(() => {});
     } else {
       setRound((r) => r + 1);
       setSelected(null);
@@ -93,6 +101,12 @@ export default function BoxOfficeScreen() {
     setIsCorrect(null);
     setGameOver(false);
     loadMovies();
+  };
+
+  const handleShare = async () => {
+    const percentage = Math.round((score / TOTAL_ROUNDS) * 100);
+    const msg = `CineGame Box Office Heads Up\nI scored ${score}/${TOTAL_ROUNDS} (${percentage}%) with a ${bestStreak} best streak!\nCan you predict the box office better?`;
+    try { await Share.share({ message: msg }); } catch (e) {}
   };
 
   const progress = (round / TOTAL_ROUNDS) * 100;
@@ -139,9 +153,13 @@ export default function BoxOfficeScreen() {
                 <Ionicons name="arrow-back" size={18} color={colors.text} />
                 <Text style={[styles.outlineButtonText, { color: colors.text }]}>Home</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.surfaceVariant }]} onPress={handleShare}>
+                <Ionicons name="share-outline" size={18} color={colors.text} />
+                <Text style={[styles.outlineButtonText, { color: colors.text }]}>Share</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={handleRestart}>
                 <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
-                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Play Again</Text>
+                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Again</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -314,9 +332,10 @@ const styles = StyleSheet.create({
   scoreLabel: { fontSize: FontSize.sm },
   scoreLarge: { fontSize: FontSize.xxxl, fontWeight: "800" },
   ratingText: { fontSize: FontSize.md, fontWeight: "600", marginTop: Spacing.md },
-  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xxl },
+  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xxl, flexWrap: "wrap" },
   outlineButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, borderWidth: 1, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   outlineButtonText: { fontSize: FontSize.md, fontWeight: "600" },
+  shareButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButtonText: { fontSize: FontSize.md, fontWeight: "600" },
 });

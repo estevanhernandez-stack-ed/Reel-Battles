@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator, Share } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Spacing, FontSize, BorderRadius } from "../mobile/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch, apiPost } from "../mobile/constants/api";
+import { useProfile } from "../mobile/hooks/useProfile";
+import * as Haptics from "expo-haptics";
 
 interface MovieAthlete {
   id: string;
@@ -44,6 +46,7 @@ export default function DraftScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const router = useRouter();
+  const { profileId } = useProfile();
 
   const [allAthletes, setAllAthletes] = useState<MovieAthlete[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +79,7 @@ export default function DraftScreen() {
   };
 
   const handleDraftPick = (athlete: MovieAthlete) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const available = getAvailableForRound();
     const remaining = available.filter(a => a.id !== athlete.id);
     const opponentPick = remaining.length > 0 ? remaining[Math.floor(Math.random() * remaining.length)] : null;
@@ -98,8 +102,13 @@ export default function DraftScreen() {
       const result = await apiPost<any>("/api/athletes/battle", { playerTeam, opponentTeam });
       setBattleResult(result);
       setPhase("results");
-      const won = result.winner === "player" ? 1 : result.winner === "tie" ? 0 : 0;
-      apiPost("/api/games", { gameType: "draft", score: won, totalQuestions: 1 }).catch(() => {});
+      const won = result.winner === "player" ? 1 : 0;
+      if (result.winner === "player") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      }
+      apiPost("/api/games", { profileId: profileId || undefined, gameType: "draft", score: won, totalQuestions: 1 }).catch(() => {});
     } catch (e) { console.error(e); }
     setBattling(false);
   };
@@ -111,6 +120,13 @@ export default function DraftScreen() {
     setOpponentTeam([]);
     setBattleResult(null);
     setAvailablePool([...allAthletes].sort(() => Math.random() - 0.5));
+  };
+
+  const handleShare = async () => {
+    if (!battleResult) return;
+    const playerWon = battleResult.winner === "player";
+    const msg = `CineGame Movie Draft\n${playerWon ? "Victory!" : "Defeat"} ${battleResult.playerScore} vs ${battleResult.opponentScore}\nMy team: ${playerTeam.map(a => a.name).join(", ")}\nThink you can draft better?`;
+    try { await Share.share({ message: msg }); } catch (e) {}
   };
 
   if (loading) {
@@ -180,9 +196,13 @@ export default function DraftScreen() {
                 <Ionicons name="arrow-back" size={18} color={colors.text} />
                 <Text style={[styles.outlineButtonText, { color: colors.text }]}>Home</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.surfaceVariant }]} onPress={handleShare}>
+                <Ionicons name="share-outline" size={18} color={colors.text} />
+                <Text style={[styles.outlineButtonText, { color: colors.text }]}>Share</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={handleRestart}>
                 <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
-                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Draft Again</Text>
+                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Again</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -345,7 +365,7 @@ const styles = StyleSheet.create({
   scorePill: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.md },
   scoreText: { fontSize: FontSize.md, fontWeight: "700" },
   scrollContent: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
-  draftHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg },
+  draftHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg, gap: Spacing.md },
   sectionTitle: { fontSize: FontSize.xxl, fontWeight: "800" },
   sectionSubtitle: { fontSize: FontSize.md, marginBottom: Spacing.lg },
   roundBadge: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
@@ -390,9 +410,10 @@ const styles = StyleSheet.create({
   breakdownName: { fontSize: FontSize.sm },
   scoreBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm },
   scoreBadgeText: { fontSize: FontSize.sm, fontWeight: "600" },
-  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xxl },
+  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.xxl, flexWrap: "wrap" },
   outlineButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, borderWidth: 1, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   outlineButtonText: { fontSize: FontSize.md, fontWeight: "600" },
+  shareButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButtonText: { fontSize: FontSize.md, fontWeight: "600" },
 });

@@ -46,15 +46,111 @@ function calculateSynergyBonus(athletes: MovieAthlete[]): number {
   return bonus;
 }
 
+const ACHIEVEMENT_DEFINITIONS = [
+  { key: "first_game", name: "First Steps", description: "Play your first game", icon: "star", category: "general", threshold: 1 },
+  { key: "ten_games", name: "Getting Warmed Up", description: "Play 10 games", icon: "flame", category: "general", threshold: 10 },
+  { key: "fifty_games", name: "Dedicated Player", description: "Play 50 games", icon: "medal", category: "general", threshold: 50 },
+  { key: "trivia_perfect", name: "Perfect Round", description: "Score 10/10 in a trivia quiz", icon: "ribbon", category: "trivia", threshold: 1 },
+  { key: "trivia_streak_5", name: "Trivia Hot Streak", description: "Score at least 5 correct in a single trivia round", icon: "flash", category: "trivia", threshold: 1 },
+  { key: "draft_first_win", name: "Draft Champion", description: "Win your first draft battle", icon: "trophy", category: "draft", threshold: 1 },
+  { key: "draft_three_wins", name: "Draft Dominator", description: "Win 3 draft battles", icon: "shield", category: "draft", threshold: 3 },
+  { key: "boxoffice_streak_5", name: "Box Office Guru", description: "Get 5 or more correct in a box office round", icon: "cash", category: "boxoffice", threshold: 1 },
+  { key: "boxoffice_8_of_10", name: "Market Analyst", description: "Score 8+ in a box office round", icon: "trending-up", category: "boxoffice", threshold: 1 },
+  { key: "daily_streak_3", name: "Consistent Player", description: "Complete 3 daily challenges in a row", icon: "calendar", category: "daily", threshold: 3 },
+  { key: "daily_streak_7", name: "Weekly Warrior", description: "Complete 7 daily challenges in a row", icon: "flag", category: "daily", threshold: 7 },
+];
+
+async function seedAchievements() {
+  const existing = await storage.getAllAchievements();
+  if (existing.length >= ACHIEVEMENT_DEFINITIONS.length) return;
+  const existingKeys = new Set(existing.map(a => a.key));
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    if (!existingKeys.has(def.key)) {
+      await storage.createAchievement(def);
+    }
+  }
+  console.log("Achievements seeded");
+}
+
+function getTodayDateString(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+async function checkAndGrantAchievements(profileId: string, context: {
+  gameType: string;
+  score: number;
+  totalQuestions: number;
+}) {
+  const allAchievements = await storage.getAllAchievements();
+  const profile = await storage.getProfile(profileId);
+  if (!profile) return;
+
+  const sessions = await storage.getGameSessionsByProfile(profileId);
+
+  for (const achievement of allAchievements) {
+    const alreadyHas = await storage.hasAchievement(profileId, achievement.id);
+    if (alreadyHas) continue;
+
+    let earned = false;
+
+    switch (achievement.key) {
+      case "first_game":
+        earned = sessions.length >= 1;
+        break;
+      case "ten_games":
+        earned = sessions.length >= 10;
+        break;
+      case "fifty_games":
+        earned = sessions.length >= 50;
+        break;
+      case "trivia_perfect":
+        earned = context.gameType === "trivia" && context.score === context.totalQuestions && context.totalQuestions >= 10;
+        break;
+      case "trivia_streak_5":
+        earned = context.gameType === "trivia" && context.score >= 5;
+        break;
+      case "draft_first_win":
+        earned = context.gameType === "draft" && context.score > 0;
+        break;
+      case "draft_three_wins": {
+        const draftWins = sessions.filter(s => s.gameType === "draft" && s.score > 0).length;
+        earned = draftWins >= 3;
+        break;
+      }
+      case "boxoffice_streak_5":
+        earned = context.gameType === "boxoffice" && context.score >= 5;
+        break;
+      case "boxoffice_8_of_10":
+        earned = context.gameType === "boxoffice" && context.score >= 8;
+        break;
+      case "daily_streak_3":
+        earned = profile.currentStreak >= 3;
+        break;
+      case "daily_streak_7":
+        earned = profile.currentStreak >= 7;
+        break;
+    }
+
+    if (earned) {
+      await storage.grantAchievement(profileId, achievement.id);
+    }
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  await seedAchievements();
   
   app.get("/api/trivia/questions", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
-      const questions = await storage.getRandomTriviaQuestions(limit);
+      const seed = req.query.seed ? parseInt(req.query.seed as string) : undefined;
+      const questions = seed
+        ? await storage.getSeededTriviaQuestions(seed, limit)
+        : await storage.getRandomTriviaQuestions(limit);
       res.json(questions);
     } catch (error) {
       console.error("Error fetching trivia questions:", error);
@@ -154,6 +250,15 @@ export async function registerRoutes(
     try {
       const validatedData = insertGameSessionSchema.parse(req.body);
       const session = await storage.createGameSession(validatedData);
+
+      if (validatedData.profileId) {
+        checkAndGrantAchievements(validatedData.profileId, {
+          gameType: validatedData.gameType,
+          score: validatedData.score ?? 0,
+          totalQuestions: validatedData.totalQuestions ?? 0,
+        }).catch(err => console.error("Achievement check error:", err));
+      }
+
       res.json(session);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -170,11 +275,171 @@ export async function registerRoutes(
   app.get("/api/games", async (req, res) => {
     try {
       const gameType = req.query.gameType as string | undefined;
-      const sessions = await storage.getGameSessions(gameType);
-      res.json(sessions);
+      const profileId = req.query.profileId as string | undefined;
+      if (profileId) {
+        const sessions = await storage.getGameSessionsByProfile(profileId);
+        res.json(sessions);
+      } else {
+        const sessions = await storage.getGameSessions(gameType);
+        res.json(sessions);
+      }
     } catch (error) {
       console.error("Error fetching game sessions:", error);
       res.status(500).json({ error: "Failed to fetch game sessions" });
+    }
+  });
+
+  app.post("/api/profiles", async (req, res) => {
+    try {
+      const { username } = req.body;
+      if (!username || typeof username !== "string" || username.trim().length < 2) {
+        return res.status(400).json({ error: "Username must be at least 2 characters" });
+      }
+      const existing = await storage.getProfileByUsername(username.trim());
+      if (existing) {
+        return res.json(existing);
+      }
+      const profile = await storage.createProfile({ username: username.trim() });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error creating profile:", error);
+      res.status(500).json({ error: "Failed to create profile" });
+    }
+  });
+
+  app.get("/api/profiles/:id", async (req, res) => {
+    try {
+      const profile = await storage.getProfile(req.params.id);
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.get("/api/daily-challenge", async (req, res) => {
+    try {
+      const today = getTodayDateString();
+      let challenge = await storage.getDailyChallenge(today);
+      if (!challenge) {
+        const dateNum = parseInt(today.replace(/-/g, ""));
+        const gameTypes = ["trivia", "trivia", "trivia"];
+        const gameType = gameTypes[dateNum % gameTypes.length];
+        challenge = await storage.createDailyChallenge({
+          challengeDate: today,
+          gameType,
+          seed: dateNum,
+        });
+      }
+      const profileId = req.query.profileId as string | undefined;
+      let completed = false;
+      if (profileId) {
+        const progress = await storage.getUserDailyProgress(profileId, today);
+        completed = !!progress?.completed;
+      }
+      res.json({ ...challenge, completed });
+    } catch (error) {
+      console.error("Error fetching daily challenge:", error);
+      res.status(500).json({ error: "Failed to fetch daily challenge" });
+    }
+  });
+
+  app.post("/api/daily-challenge/complete", async (req, res) => {
+    try {
+      const { profileId, score, totalQuestions } = req.body;
+      if (!profileId) return res.status(400).json({ error: "profileId required" });
+
+      const today = getTodayDateString();
+      const existing = await storage.getUserDailyProgress(profileId, today);
+      if (existing) return res.json({ alreadyCompleted: true, streak: 0 });
+
+      let challenge = await storage.getDailyChallenge(today);
+      if (!challenge) {
+        const dateNum = parseInt(today.replace(/-/g, ""));
+        challenge = await storage.createDailyChallenge({
+          challengeDate: today,
+          gameType: "trivia",
+          seed: dateNum,
+        });
+      }
+
+      await storage.createUserDailyProgress({
+        profileId,
+        challengeDate: today,
+        gameType: challenge.gameType,
+        completed: true,
+        score: score || 0,
+        totalQuestions: totalQuestions || 10,
+      });
+
+      const profile = await storage.getProfile(profileId);
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      let newStreak = 1;
+      if (profile.lastChallengeDate === yesterdayStr) {
+        newStreak = profile.currentStreak + 1;
+      }
+      const newLongest = Math.max(profile.longestStreak, newStreak);
+
+      const updated = await storage.updateProfileStreak(profileId, newStreak, newLongest, today);
+
+      await storage.createGameSession({
+        profileId,
+        gameType: "daily",
+        score: score || 0,
+        totalQuestions: totalQuestions || 10,
+      });
+
+      checkAndGrantAchievements(profileId, {
+        gameType: "daily",
+        score: score || 0,
+        totalQuestions: totalQuestions || 10,
+      }).catch(err => console.error("Achievement check error:", err));
+
+      res.json({ streak: updated.currentStreak, longestStreak: updated.longestStreak });
+    } catch (error) {
+      console.error("Error completing daily challenge:", error);
+      res.status(500).json({ error: "Failed to complete daily challenge" });
+    }
+  });
+
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const gameType = (req.query.gameType as string) || "trivia";
+      const period = (req.query.period as "weekly" | "alltime") || "alltime";
+      const limit = parseInt(req.query.limit as string) || 20;
+      const results = await storage.getLeaderboard(gameType, period, limit);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/achievements", async (req, res) => {
+    try {
+      const profileId = req.query.profileId as string | undefined;
+      const all = await storage.getAllAchievements();
+      if (profileId) {
+        const earned = await storage.getUserAchievements(profileId);
+        const earnedIds = new Set(earned.map(e => e.achievementId));
+        const result = all.map(a => ({
+          ...a,
+          earned: earnedIds.has(a.id),
+          earnedAt: earned.find(e => e.achievementId === a.id)?.earnedAt || null,
+        }));
+        res.json(result);
+      } else {
+        res.json(all.map(a => ({ ...a, earned: false, earnedAt: null })));
+      }
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ error: "Failed to fetch achievements" });
     }
   });
 

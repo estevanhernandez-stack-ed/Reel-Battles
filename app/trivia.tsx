@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, ActivityIndicator, Share, Platform } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Spacing, FontSize, BorderRadius } from "../mobile/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch, apiPost } from "../mobile/constants/api";
+import { useProfile } from "../mobile/hooks/useProfile";
+import * as Haptics from "expo-haptics";
 
 interface TriviaQuestion {
   id: string;
@@ -27,6 +29,11 @@ export default function TriviaScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { profileId } = useProfile();
+
+  const isDaily = params.daily === "true";
+  const seed = params.seed as string | undefined;
 
   const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,14 +50,17 @@ export default function TriviaScreen() {
   const loadQuestions = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<TriviaQuestion[]>("/api/trivia/questions?limit=10");
+      const url = seed
+        ? `/api/trivia/questions?limit=10&seed=${seed}`
+        : "/api/trivia/questions?limit=10";
+      const data = await apiFetch<TriviaQuestion[]>(url);
       setQuestions(data);
       if (data.length > 0) setShuffled(shuffleAnswers(data[0]));
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, []);
+  }, [seed]);
 
   useEffect(() => {
     loadQuestions();
@@ -66,13 +76,32 @@ export default function TriviaScreen() {
     setAnswered(true);
     setSelectedAnswer(answer);
     setIsCorrect(correct);
-    if (correct) setScore((s) => s + 1);
+    if (correct) {
+      setScore((s) => s + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
   };
 
   const handleNext = () => {
     if (currentIndex >= totalQuestions - 1) {
+      const finalScore = isCorrect ? score : score;
       setGameOver(true);
-      apiPost("/api/games", { gameType: "trivia", score, totalQuestions }).catch(() => {});
+      if (isDaily && profileId) {
+        apiPost("/api/daily-challenge/complete", {
+          profileId,
+          score: finalScore,
+          totalQuestions,
+        }).catch(() => {});
+      } else {
+        apiPost("/api/games", {
+          profileId: profileId || undefined,
+          gameType: "trivia",
+          score: finalScore,
+          totalQuestions,
+        }).catch(() => {});
+      }
     } else {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
@@ -96,6 +125,17 @@ export default function TriviaScreen() {
     loadQuestions();
   };
 
+  const handleShare = async () => {
+    const percentage = Math.round((score / totalQuestions) * 100);
+    const stars = score >= 8 ? "***" : score >= 5 ? "**" : "*";
+    const msg = isDaily
+      ? `CineGame Daily Challenge ${stars}\nI scored ${score}/${totalQuestions} (${percentage}%) on today's daily trivia!\nCan you beat my score?`
+      : `CineGame Trivia ${stars}\nI scored ${score}/${totalQuestions} (${percentage}%)!\nThink you know movies better?`;
+    try {
+      await Share.share({ message: msg });
+    } catch (e) {}
+  };
+
   const getAnswerStyle = (answer: string) => {
     if (!answered) return { bg: colors.surface, border: colors.border, text: colors.text };
     if (answer === currentQ?.correctAnswer) return { bg: "#16a34a20", border: "#16a34a", text: "#16a34a" };
@@ -108,7 +148,9 @@ export default function TriviaScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading trivia questions...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            {isDaily ? "Loading daily challenge..." : "Loading trivia questions..."}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -120,12 +162,14 @@ export default function TriviaScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.resultsContainer}>
-            <View style={[styles.trophyCircle, { backgroundColor: "#f59e0b" }]}>
-              <Ionicons name="trophy" size={44} color="#ffffff" />
+            <View style={[styles.trophyCircle, { backgroundColor: isDaily ? "#8b5cf6" : "#f59e0b" }]}>
+              <Ionicons name={isDaily ? "calendar" : "trophy"} size={44} color="#ffffff" />
             </View>
-            <Text style={[styles.resultsTitle, { color: colors.text }]}>Game Over!</Text>
+            <Text style={[styles.resultsTitle, { color: colors.text }]}>
+              {isDaily ? "Daily Complete!" : "Game Over!"}
+            </Text>
             <Text style={[styles.resultsSubtitle, { color: colors.textSecondary }]}>
-              You've completed the trivia challenge
+              {isDaily ? "Great job on today's challenge" : "You've completed the trivia challenge"}
             </Text>
             <View style={[styles.scoreBox, { backgroundColor: colors.surfaceVariant }]}>
               <Text style={[styles.scoreNumber, { color: colors.primary }]}>{score}/{totalQuestions}</Text>
@@ -148,12 +192,21 @@ export default function TriviaScreen() {
                 <Text style={[styles.outlineButtonText, { color: colors.text }]}>Home</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-                onPress={handleRestart}
+                style={[styles.shareButton, { backgroundColor: colors.surfaceVariant }]}
+                onPress={handleShare}
               >
-                <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
-                <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Play Again</Text>
+                <Ionicons name="share-outline" size={18} color={colors.text} />
+                <Text style={[styles.outlineButtonText, { color: colors.text }]}>Share</Text>
               </TouchableOpacity>
+              {!isDaily && (
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                  onPress={handleRestart}
+                >
+                  <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
+                  <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>Again</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -168,8 +221,10 @@ export default function TriviaScreen() {
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.topBarCenter}>
-          <Ionicons name="film" size={18} color={colors.primary} />
-          <Text style={[styles.topBarTitle, { color: colors.text }]}>Trivia Quiz</Text>
+          <Ionicons name={isDaily ? "calendar" : "film"} size={18} color={isDaily ? "#8b5cf6" : colors.primary} />
+          <Text style={[styles.topBarTitle, { color: colors.text }]}>
+            {isDaily ? "Daily Challenge" : "Trivia Quiz"}
+          </Text>
         </View>
         <View style={[styles.scorePill, { backgroundColor: colors.surfaceVariant }]}>
           <Ionicons name="trophy" size={14} color={colors.accent} />
@@ -190,7 +245,7 @@ export default function TriviaScreen() {
             )}
           </View>
           <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
-            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: isDaily ? "#8b5cf6" : colors.primary }]} />
           </View>
         </View>
 
@@ -336,9 +391,10 @@ const styles = StyleSheet.create({
   scorePercent: { fontSize: FontSize.md },
   hintsText: { fontSize: FontSize.xs },
   ratingText: { fontSize: FontSize.md, fontWeight: "600", marginTop: Spacing.sm },
-  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.lg },
+  buttonRow: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.lg, flexWrap: "wrap" },
   outlineButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, borderWidth: 1, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   outlineButtonText: { fontSize: FontSize.md, fontWeight: "600" },
+  shareButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButton: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   primaryButtonText: { fontSize: FontSize.md, fontWeight: "600" },
 });
