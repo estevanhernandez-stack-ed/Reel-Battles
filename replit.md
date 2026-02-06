@@ -114,8 +114,9 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/achievements?profileId=X` - Get all achievements with earned status
 
 #### Admin Endpoints
-- `POST /api/admin/movies` - Create movie
+- `POST /api/admin/movies` - Create movie (accepts imdbId)
 - `DELETE /api/admin/movies/:id` - Delete movie
+- `POST /api/admin/omdb/enrich` - Fetch posters/metadata from OMDb API for all movies
 - `POST /api/admin/athletes` - Create athlete
 - `DELETE /api/admin/athletes/:id` - Delete athlete
 
@@ -147,3 +148,6 @@ Preferred communication style: Simple, everyday language.
 - **express** - Web server framework
 - **drizzle-orm** - Type-safe ORM for PostgreSQL
 - **zod** - Schema validation
+
+### External APIs
+- **OMDb API** - Movie posters and metadata (key stored in OMDB_API_KEY secret, used server-side only via HTTPS)

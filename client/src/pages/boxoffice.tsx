@@ -355,12 +355,13 @@ export default function BoxOffice() {
                   >
                     <CardContent className="p-6">
                       <div className="relative">
-                        <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-md mb-4 flex items-center justify-center overflow-hidden">
+                        <div className="aspect-[2/3] bg-gradient-to-br from-muted to-muted/50 rounded-md mb-4 flex items-center justify-center overflow-hidden">
                           {movie.posterUrl ? (
                             <img
                               src={movie.posterUrl}
                               alt={movie.title}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
+                              data-testid={`img-poster-${index}`}
                             />
                           ) : (
                             <Film className="h-12 w-12 text-muted-foreground/50" />

@@ -559,7 +559,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/movies", async (req, res) => {
     try {
-      const { title, year, genre, openingWeekend, director, posterUrl, rating, synopsis } = req.body;
+      const { title, year, genre, openingWeekend, director, posterUrl, rating, synopsis, imdbId } = req.body;
       if (!title || !year || !genre || !openingWeekend) {
         return res.status(400).json({ error: "title, year, genre, and openingWeekend are required" });
       }
@@ -572,11 +572,60 @@ export async function registerRoutes(
         posterUrl: posterUrl || null,
         rating: rating || null,
         synopsis: synopsis || null,
+        imdbId: imdbId || null,
       });
       res.json(movie);
     } catch (error) {
       console.error("Error creating movie:", error);
       res.status(500).json({ error: "Failed to create movie" });
+    }
+  });
+
+  app.post("/api/admin/omdb/enrich", async (req, res) => {
+    try {
+      const apiKey = process.env.OMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "OMDB_API_KEY not configured" });
+      }
+      const allMovies = await storage.getMovies();
+      const results: Array<{ title: string; status: string; posterUrl?: string }> = [];
+
+      for (const movie of allMovies) {
+        try {
+          let omdbUrl: string;
+          if (movie.imdbId) {
+            omdbUrl = `https://www.omdbapi.com/?i=${movie.imdbId}&apikey=${apiKey}`;
+          } else {
+            omdbUrl = `https://www.omdbapi.com/?t=${encodeURIComponent(movie.title)}&y=${movie.year}&apikey=${apiKey}`;
+          }
+          const omdbRes = await fetch(omdbUrl);
+          const data = await omdbRes.json() as any;
+
+          if (data.Response === "True" && data.Poster && data.Poster !== "N/A") {
+            const updateData: any = { posterUrl: data.Poster };
+            if (!movie.imdbId && data.imdbID) {
+              updateData.imdbId = data.imdbID;
+            }
+            if (!movie.rating && data.Rated && data.Rated !== "N/A") {
+              updateData.rating = data.Rated;
+            }
+            if (!movie.synopsis && data.Plot && data.Plot !== "N/A") {
+              updateData.synopsis = data.Plot;
+            }
+            await storage.updateMovie(movie.id, updateData);
+            results.push({ title: movie.title, status: "updated", posterUrl: data.Poster });
+          } else {
+            results.push({ title: movie.title, status: "not_found" });
+          }
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (err) {
+          results.push({ title: movie.title, status: "error" });
+        }
+      }
+      res.json({ updated: results.filter(r => r.status === "updated").length, total: allMovies.length, results });
+    } catch (error) {
+      console.error("Error enriching movies with OMDb:", error);
+      res.status(500).json({ error: "Failed to enrich movies" });
     }
   });
 

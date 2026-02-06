@@ -29,6 +29,7 @@ export interface IStorage {
   getMovies(): Promise<Movie[]>;
   getRandomMovies(limit: number): Promise<Movie[]>;
   createMovie(movie: InsertMovie): Promise<Movie>;
+  updateMovie(id: string, data: Partial<InsertMovie>): Promise<Movie>;
   deleteMovie(id: string): Promise<void>;
   
   getMovieAthletes(): Promise<MovieAthlete[]>;
@@ -123,6 +124,11 @@ export class DatabaseStorage implements IStorage {
 
   async createMovie(movie: InsertMovie): Promise<Movie> {
     const [result] = await db.insert(movies).values(movie).returning();
+    return result;
+  }
+
+  async updateMovie(id: string, data: Partial<InsertMovie>): Promise<Movie> {
+    const [result] = await db.update(movies).set(data).where(eq(movies.id, id)).returning();
     return result;
   }
 

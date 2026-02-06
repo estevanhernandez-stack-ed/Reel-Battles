@@ -188,7 +188,7 @@ export default function BoxOfficeScreen() {
       >
         <View style={[styles.posterArea, { backgroundColor: colors.surfaceVariant }]}>
           {movie.posterUrl ? (
-            <Image source={{ uri: movie.posterUrl }} style={styles.posterImage} resizeMode="cover" />
+            <Image source={{ uri: movie.posterUrl }} style={styles.posterImage} resizeMode="contain" />
           ) : (
             <Ionicons name="film" size={40} color={colors.textTertiary} />
           )}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   promptSubtitle: { fontSize: FontSize.sm, textAlign: "center" },
   moviesContainer: { gap: Spacing.lg, marginBottom: Spacing.lg },
   movieCard: { borderRadius: BorderRadius.lg, padding: Spacing.lg, gap: Spacing.md },
-  posterArea: { height: 160, borderRadius: BorderRadius.md, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  posterArea: { height: 200, borderRadius: BorderRadius.md, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   posterImage: { width: "100%", height: "100%" },
   resultIcon: { position: "absolute", top: 8, right: 8, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   movieTitle: { fontSize: FontSize.lg, fontWeight: "700" },
