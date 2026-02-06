@@ -87,7 +87,8 @@ export default function Draft() {
 
   const battleMutation = useMutation({
     mutationFn: async (data: { playerTeam: MovieAthlete[]; opponentTeam: MovieAthlete[] }) => {
-      return apiRequest("POST", "/api/athletes/battle", data);
+      const res = await apiRequest("POST", "/api/athletes/battle", data);
+      return await res.json();
     },
     onSuccess: (result: any) => {
       setDraftState(prev => ({ ...prev, battleResult: result, phase: "results" }));
