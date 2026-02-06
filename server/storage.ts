@@ -21,9 +21,9 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   
   getTriviaQuestions(limit?: number): Promise<TriviaQuestion[]>;
-  getRandomTriviaQuestions(limit: number): Promise<TriviaQuestion[]>;
-  getSeededTriviaQuestions(seed: number, limit: number): Promise<TriviaQuestion[]>;
-  getTriviaQuestionCount(): Promise<number>;
+  getRandomTriviaQuestions(limit: number, tier?: string): Promise<TriviaQuestion[]>;
+  getSeededTriviaQuestions(seed: number, limit: number, tier?: string): Promise<TriviaQuestion[]>;
+  getTriviaQuestionCount(tier?: string): Promise<number>;
   createTriviaQuestion(question: InsertTriviaQuestion): Promise<TriviaQuestion>;
   
   getMovies(): Promise<Movie[]>;
@@ -85,15 +85,25 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(triviaQuestions);
   }
 
-  async getRandomTriviaQuestions(limit: number): Promise<TriviaQuestion[]> {
+  async getRandomTriviaQuestions(limit: number, tier?: string): Promise<TriviaQuestion[]> {
+    if (tier) {
+      return db.select().from(triviaQuestions).where(eq(triviaQuestions.tier, tier)).orderBy(sql`RANDOM()`).limit(limit);
+    }
     return db.select().from(triviaQuestions).orderBy(sql`RANDOM()`).limit(limit);
   }
 
-  async getSeededTriviaQuestions(seed: number, limit: number): Promise<TriviaQuestion[]> {
+  async getSeededTriviaQuestions(seed: number, limit: number, tier?: string): Promise<TriviaQuestion[]> {
+    if (tier) {
+      return db.select().from(triviaQuestions).where(eq(triviaQuestions.tier, tier)).orderBy(sql`md5(${seed}::text || id)`).limit(limit);
+    }
     return db.select().from(triviaQuestions).orderBy(sql`md5(${seed}::text || id)`).limit(limit);
   }
 
-  async getTriviaQuestionCount(): Promise<number> {
+  async getTriviaQuestionCount(tier?: string): Promise<number> {
+    if (tier) {
+      const [result] = await db.select({ count: sql<number>`count(*)` }).from(triviaQuestions).where(eq(triviaQuestions.tier, tier));
+      return result.count;
+    }
     const [result] = await db.select({ count: sql<number>`count(*)` }).from(triviaQuestions);
     return Number(result.count);
   }

@@ -16,7 +16,9 @@ import {
   Sparkles,
   Loader2,
   Lightbulb,
-  Film
+  Film,
+  Globe,
+  Star
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { TriviaQuestion } from "@shared/schema";
@@ -45,6 +47,9 @@ function shuffleAnswers(question: TriviaQuestion): string[] {
 }
 
 export default function Trivia() {
+  const [tier, setTier] = useState<"popular" | "all">("popular");
+  const [started, setStarted] = useState(false);
+  const [gameRound, setGameRound] = useState(0);
   const [gameState, setGameState] = useState<GameState>({
     currentQuestion: 0,
     score: 0,
@@ -57,8 +62,9 @@ export default function Trivia() {
     hintsUsed: 0,
   });
 
-  const { data: questions, isLoading, error, refetch } = useQuery<TriviaQuestion[]>({
-    queryKey: ["/api/trivia/questions"],
+  const { data: questions, isLoading, error } = useQuery<TriviaQuestion[]>({
+    queryKey: [`/api/trivia/questions?limit=10&tier=${tier}&_r=${gameRound}`],
+    enabled: started,
   });
 
   const saveGameMutation = useMutation({
@@ -124,7 +130,8 @@ export default function Trivia() {
       showHint: false,
       hintsUsed: 0,
     });
-    refetch();
+    setGameRound(r => r + 1);
+    setStarted(false);
   };
 
   const toggleHint = () => {
@@ -145,6 +152,86 @@ export default function Trivia() {
   };
 
   const progressPercent = ((gameState.currentQuestion + 1) / totalQuestions) * 100;
+
+  if (!started) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link href="/">
+                <Button variant="ghost" size="icon" data-testid="button-back">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="flex items-center gap-2">
+                <Clapperboard className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Trivia Quiz</span>
+              </div>
+            </div>
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-12">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center mx-auto mb-6">
+                <Film className="h-10 w-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold font-serif mb-2">Movie Trivia</h2>
+              <p className="text-muted-foreground">Choose your question pool</p>
+            </div>
+
+            <div className="space-y-3 mb-8">
+              <Card
+                className={`cursor-pointer transition-all ${tier === "popular" ? "border-primary ring-1 ring-primary" : "hover-elevate"}`}
+                onClick={() => setTier("popular")}
+                data-testid="option-popular"
+              >
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-md bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shrink-0">
+                    <Star className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold">Popular Movies</div>
+                    <div className="text-sm text-muted-foreground">Well-known blockbusters, classics, and fan favorites</div>
+                  </div>
+                  {tier === "popular" && <Badge>Selected</Badge>}
+                </CardContent>
+              </Card>
+
+              <Card
+                className={`cursor-pointer transition-all ${tier === "all" ? "border-primary ring-1 ring-primary" : "hover-elevate"}`}
+                onClick={() => setTier("all")}
+                data-testid="option-all"
+              >
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-md bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shrink-0">
+                    <Globe className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold">All Movies</div>
+                    <div className="text-sm text-muted-foreground">Everything including indie, international, and deep cuts</div>
+                  </div>
+                  {tier === "all" && <Badge>Selected</Badge>}
+                </CardContent>
+              </Card>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() => setStarted(true)}
+              data-testid="button-start-trivia"
+            >
+              <Clapperboard className="mr-2 h-4 w-4" />
+              Start Quiz
+            </Button>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -174,7 +261,7 @@ export default function Trivia() {
                   Back Home
                 </Button>
               </Link>
-              <Button onClick={() => refetch()} data-testid="button-try-again">Try Again</Button>
+              <Button onClick={() => setGameRound(r => r + 1)} data-testid="button-try-again">Try Again</Button>
             </div>
           </CardContent>
         </Card>
@@ -277,6 +364,9 @@ export default function Trivia() {
             <div className="flex items-center gap-2">
               <Clapperboard className="h-5 w-5 text-primary" />
               <span className="font-semibold">Trivia Quiz</span>
+              <Badge variant="outline" className="text-[10px]" data-testid="badge-tier">
+                {tier === "popular" ? "Popular" : "All Movies"}
+              </Badge>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -295,9 +385,9 @@ export default function Trivia() {
             <span className="text-sm text-muted-foreground">
               Question {gameState.currentQuestion + 1} of {totalQuestions}
             </span>
-            {currentQ?.movieTitle && (
+            {currentQ?.category && (
               <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-                {currentQ.movieTitle}
+                {currentQ.category}
               </span>
             )}
           </div>

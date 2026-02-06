@@ -195,9 +195,11 @@ export async function registerRoutes(
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const seed = req.query.seed ? parseInt(req.query.seed as string) : undefined;
+      const tier = (req.query.tier as string) || "popular";
+      const tierFilter = tier === "all" ? undefined : tier;
       const questions = seed
-        ? await storage.getSeededTriviaQuestions(seed, limit)
-        : await storage.getRandomTriviaQuestions(limit);
+        ? await storage.getSeededTriviaQuestions(seed, limit, tierFilter)
+        : await storage.getRandomTriviaQuestions(limit, tierFilter);
       res.json(questions);
     } catch (error) {
       console.error("Error fetching trivia questions:", error);
@@ -205,9 +207,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/trivia/stats", async (_req, res) => {
+  app.get("/api/trivia/stats", async (req, res) => {
     try {
-      const count = await storage.getTriviaQuestionCount();
+      const tier = (req.query.tier as string) || undefined;
+      const tierFilter = tier === "all" ? undefined : tier;
+      const count = await storage.getTriviaQuestionCount(tierFilter);
       res.json({ totalQuestions: count, source: "postgresql" });
     } catch (error) {
       console.error("Error fetching trivia stats:", error);

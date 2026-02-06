@@ -34,9 +34,12 @@ export default function TriviaScreen() {
 
   const isDaily = params.daily === "true";
   const seed = params.seed as string | undefined;
+  const paramTier = params.tier as string | undefined;
 
+  const [tier, setTier] = useState<"popular" | "all">(paramTier === "all" ? "all" : "popular");
+  const [started, setStarted] = useState(isDaily);
   const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(false);
@@ -50,9 +53,9 @@ export default function TriviaScreen() {
   const loadQuestions = useCallback(async () => {
     setLoading(true);
     try {
-      const url = seed
+      let url = seed
         ? `/api/trivia/questions?limit=10&seed=${seed}`
-        : "/api/trivia/questions?limit=10";
+        : `/api/trivia/questions?limit=10&tier=${tier}`;
       const data = await apiFetch<TriviaQuestion[]>(url);
       setQuestions(data);
       if (data.length > 0) setShuffled(shuffleAnswers(data[0]));
@@ -60,11 +63,11 @@ export default function TriviaScreen() {
       console.error(e);
     }
     setLoading(false);
-  }, [seed]);
+  }, [seed, tier]);
 
   useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+    if (started) loadQuestions();
+  }, [started, loadQuestions]);
 
   const currentQ = questions[currentIndex];
   const totalQuestions = questions.length || 10;
@@ -122,7 +125,7 @@ export default function TriviaScreen() {
     setGameOver(false);
     setShowHint(false);
     setHintsUsed(0);
-    loadQuestions();
+    setStarted(false);
   };
 
   const handleShare = async () => {
@@ -142,6 +145,71 @@ export default function TriviaScreen() {
     if (answer === selectedAnswer && !isCorrect) return { bg: "#dc262620", border: "#dc2626", text: "#dc2626" };
     return { bg: colors.surface, border: colors.border, text: colors.textTertiary };
   };
+
+  if (!started && !isDaily) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.setupHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Trivia Quiz</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.setupContent}>
+          <View style={[styles.setupIconCircle, { backgroundColor: "#ef4444" }]}>
+            <Ionicons name="film" size={40} color="#ffffff" />
+          </View>
+          <Text style={[styles.setupTitle, { color: colors.text }]}>Movie Trivia</Text>
+          <Text style={[styles.setupSubtitle, { color: colors.textSecondary }]}>Choose your question pool</Text>
+
+          <TouchableOpacity
+            onPress={() => setTier("popular")}
+            style={[
+              styles.tierOption,
+              { backgroundColor: colors.surface, borderColor: tier === "popular" ? colors.primary : colors.border },
+              tier === "popular" && { borderWidth: 2 },
+            ]}
+          >
+            <View style={[styles.tierIcon, { backgroundColor: "#f59e0b" }]}>
+              <Ionicons name="star" size={22} color="#ffffff" />
+            </View>
+            <View style={styles.tierTextContainer}>
+              <Text style={[styles.tierTitle, { color: colors.text }]}>Popular Movies</Text>
+              <Text style={[styles.tierDesc, { color: colors.textSecondary }]}>Blockbusters, classics, and fan favorites</Text>
+            </View>
+            {tier === "popular" && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setTier("all")}
+            style={[
+              styles.tierOption,
+              { backgroundColor: colors.surface, borderColor: tier === "all" ? colors.primary : colors.border },
+              tier === "all" && { borderWidth: 2 },
+            ]}
+          >
+            <View style={[styles.tierIcon, { backgroundColor: "#8b5cf6" }]}>
+              <Ionicons name="globe" size={22} color="#ffffff" />
+            </View>
+            <View style={styles.tierTextContainer}>
+              <Text style={[styles.tierTitle, { color: colors.text }]}>All Movies</Text>
+              <Text style={[styles.tierDesc, { color: colors.textSecondary }]}>Including indie, international, and deep cuts</Text>
+            </View>
+            {tier === "all" && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setStarted(true)}
+            style={[styles.startButton, { backgroundColor: colors.primary }]}
+          >
+            <Ionicons name="play" size={20} color="#ffffff" />
+            <Text style={styles.startButtonText}>Start Quiz</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (
@@ -350,6 +418,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.lg },
   loadingText: { fontSize: FontSize.md },
+  setupHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: "transparent" },
+  headerTitle: { flex: 1, fontSize: FontSize.lg, fontWeight: "700", textAlign: "center" },
+  setupContent: { alignItems: "center", padding: Spacing.lg, paddingTop: Spacing.xxxl },
+  setupIconCircle: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: Spacing.lg },
+  setupTitle: { fontSize: FontSize.xxxl, fontWeight: "800", marginBottom: Spacing.xs },
+  setupSubtitle: { fontSize: FontSize.md, marginBottom: Spacing.xxl },
+  tierOption: { flexDirection: "row", alignItems: "center", gap: Spacing.md, borderWidth: 1, borderRadius: BorderRadius.lg, padding: Spacing.lg, marginBottom: Spacing.md, width: "100%" },
+  tierIcon: { width: 40, height: 40, borderRadius: BorderRadius.md, alignItems: "center", justifyContent: "center" },
+  tierTextContainer: { flex: 1 },
+  tierTitle: { fontSize: FontSize.md, fontWeight: "700" },
+  tierDesc: { fontSize: FontSize.sm, marginTop: 2 },
+  startButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm, width: "100%", paddingVertical: Spacing.lg, borderRadius: BorderRadius.md, marginTop: Spacing.lg },
+  startButtonText: { fontSize: FontSize.md, fontWeight: "700", color: "#ffffff" },
   topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: 1, gap: Spacing.md },
   backButton: { padding: Spacing.xs },
   topBarCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.sm },
