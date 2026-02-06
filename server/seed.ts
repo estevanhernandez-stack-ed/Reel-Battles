@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { triviaQuestions, movies, movieAthletes } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const sampleTriviaQuestions = [
   {
@@ -114,6 +115,26 @@ const sampleTriviaQuestions = [
 
 const sampleMovies = [
   {
+    title: "A Quiet Place",
+    year: 2018,
+    openingWeekend: 50203562,
+    genre: "Horror",
+    director: "John Krasinski",
+    rating: "PG-13",
+    synopsis: "A family struggles for survival in a world invaded by blind alien creatures with ultra-sensitive hearing.",
+    imdbId: "tt6644200",
+  },
+  {
+    title: "Aquaman",
+    year: 2018,
+    openingWeekend: 67873522,
+    genre: "Action",
+    director: "James Wan",
+    rating: "PG-13",
+    synopsis: "Arthur Curry, the human-born heir to the underwater kingdom of Atlantis, goes on a quest to prevent a war between the worlds of ocean and land.",
+    imdbId: "tt1477834",
+  },
+  {
     title: "Avatar",
     year: 2009,
     openingWeekend: 77025481,
@@ -121,6 +142,17 @@ const sampleMovies = [
     director: "James Cameron",
     rating: "PG-13",
     synopsis: "A paraplegic Marine dispatched to the moon Pandora becomes torn between following his orders and protecting the world he feels is his home.",
+    imdbId: "tt0499549",
+  },
+  {
+    title: "Avengers: Age of Ultron",
+    year: 2015,
+    openingWeekend: 191271109,
+    genre: "Action",
+    director: "Joss Whedon",
+    rating: "PG-13",
+    synopsis: "When Tony Stark and Bruce Banner try to jump-start a dormant peacekeeping program called Ultron, things go horribly wrong and it's up to Earth's mightiest heroes to stop the villainous Ultron from enacting his terrible plan.",
+    imdbId: "tt2395427",
   },
   {
     title: "Avengers: Endgame",
@@ -130,51 +162,37 @@ const sampleMovies = [
     director: "Anthony & Joe Russo",
     rating: "PG-13",
     synopsis: "The Avengers assemble once more to reverse Thanos' actions and restore balance to the universe.",
+    imdbId: "tt4154796",
   },
   {
-    title: "The Dark Knight",
-    year: 2008,
-    openingWeekend: 158411483,
+    title: "Avengers: Infinity War",
+    year: 2018,
+    openingWeekend: 257698183,
     genre: "Action",
-    director: "Christopher Nolan",
+    director: "Anthony & Joe Russo",
     rating: "PG-13",
-    synopsis: "Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent.",
+    synopsis: "The Avengers and their allies must be willing to sacrifice all in an attempt to defeat the powerful Thanos before his blitz of devastation and ruin puts an end to the universe.",
+    imdbId: "tt4154756",
   },
   {
-    title: "Jurassic World",
-    year: 2015,
-    openingWeekend: 208806270,
-    genre: "Adventure",
-    director: "Colin Trevorrow",
+    title: "Barbie",
+    year: 2023,
+    openingWeekend: 162022044,
+    genre: "Comedy",
+    director: "Greta Gerwig",
     rating: "PG-13",
-    synopsis: "A fully functional dinosaur theme park descends into chaos when a genetically modified dinosaur breaks loose.",
+    synopsis: "Barbie and Ken are having the time of their lives in the seemingly perfect world of Barbie Land. However, when they get a chance to go to the outside world, they soon discover the joys and perils of living among regular humans.",
+    imdbId: "tt1517268",
   },
   {
-    title: "The Lion King",
-    year: 2019,
-    openingWeekend: 191770759,
-    genre: "Animation",
-    director: "Jon Favreau",
-    rating: "PG",
-    synopsis: "A young lion prince flees his kingdom after his father's death only to return years later to reclaim his throne.",
-  },
-  {
-    title: "Frozen II",
-    year: 2019,
-    openingWeekend: 130263358,
-    genre: "Animation",
-    director: "Chris Buck & Jennifer Lee",
-    rating: "PG",
-    synopsis: "Anna, Elsa, Kristoff, and Olaf head far into the forest to discover the origin of Elsa's powers.",
-  },
-  {
-    title: "Spider-Man: No Way Home",
-    year: 2021,
-    openingWeekend: 260138569,
+    title: "Batman v Superman: Dawn of Justice",
+    year: 2016,
+    openingWeekend: 166007347,
     genre: "Action",
-    director: "Jon Watts",
-    rating: "PG-13",
-    synopsis: "Peter Parker seeks Doctor Strange's help to make everyone forget he is Spider-Man.",
+    director: "Zack Snyder",
+    rating: "R",
+    synopsis: "Batman is manipulated by Lex Luthor to fear Superman. Superman's existence is meanwhile dividing the world and he is framed for murder during an international crisis.",
+    imdbId: "tt2975590",
   },
   {
     title: "Black Panther",
@@ -184,60 +202,17 @@ const sampleMovies = [
     director: "Ryan Coogler",
     rating: "PG-13",
     synopsis: "T'Challa returns home to Wakanda to take his rightful place as king after the death of his father.",
+    imdbId: "tt1825683",
   },
   {
-    title: "Incredibles 2",
-    year: 2018,
-    openingWeekend: 182687905,
-    genre: "Animation",
-    director: "Brad Bird",
-    rating: "PG",
-    synopsis: "The Parr family takes on a new mission which involves a change in family roles.",
-  },
-  {
-    title: "Star Wars: The Force Awakens",
-    year: 2015,
-    openingWeekend: 247966675,
-    genre: "Sci-Fi",
-    director: "J.J. Abrams",
+    title: "Black Panther: Wakanda Forever",
+    year: 2022,
+    openingWeekend: 181339761,
+    genre: "Action",
+    director: "Ryan Coogler",
     rating: "PG-13",
-    synopsis: "Three decades after the defeat of the Empire, a new threat arises in the form of the First Order.",
-  },
-  {
-    title: "Titanic",
-    year: 1997,
-    openingWeekend: 28638131,
-    genre: "Romance",
-    director: "James Cameron",
-    rating: "PG-13",
-    synopsis: "A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the ill-fated R.M.S. Titanic.",
-  },
-  {
-    title: "The Godfather",
-    year: 1972,
-    openingWeekend: 26081000,
-    genre: "Crime",
-    director: "Francis Ford Coppola",
-    rating: "R",
-    synopsis: "The aging patriarch of an organized crime dynasty transfers control to his reluctant son.",
-  },
-  {
-    title: "Joker",
-    year: 2019,
-    openingWeekend: 96202337,
-    genre: "Drama",
-    director: "Todd Phillips",
-    rating: "R",
-    synopsis: "A mentally troubled comedian embarks on a downward spiral that leads to the creation of an iconic villain.",
-  },
-  {
-    title: "Toy Story 4",
-    year: 2019,
-    openingWeekend: 120908065,
-    genre: "Animation",
-    director: "Josh Cooley",
-    rating: "G",
-    synopsis: "Woody and the gang go on a road trip with Bonnie and a new toy named Forky.",
+    synopsis: "The people of Wakanda fight to protect their home from intervening world powers as they mourn the death of King T'Challa.",
+    imdbId: "tt9114286",
   },
   {
     title: "Captain Marvel",
@@ -247,6 +222,647 @@ const sampleMovies = [
     director: "Anna Boden & Ryan Fleck",
     rating: "PG-13",
     synopsis: "Carol Danvers becomes one of the universe's most powerful heroes during a galactic war.",
+    imdbId: "tt4154664",
+  },
+  {
+    title: "Coco",
+    year: 2017,
+    openingWeekend: 50802605,
+    genre: "Animation",
+    director: "Lee Unkrich",
+    rating: "PG",
+    synopsis: "Aspiring musician Miguel, confronted with his family's ancestral ban on music, enters the Land of the Dead to find his great-great-grandfather, a legendary singer.",
+    imdbId: "tt2380307",
+  },
+  {
+    title: "Deadpool",
+    year: 2016,
+    openingWeekend: 132434639,
+    genre: "Action",
+    director: "Tim Miller",
+    rating: "R",
+    synopsis: "A wisecracking mercenary gets experimented on and becomes immortal yet hideously scarred, and sets out to track down the man who ruined his looks.",
+    imdbId: "tt1431045",
+  },
+  {
+    title: "Deadpool 2",
+    year: 2018,
+    openingWeekend: 125507153,
+    genre: "Action",
+    director: "David Leitch",
+    rating: "R",
+    synopsis: "Foul-mouthed mutant mercenary Wade Wilson assembles a team of fellow mutant rogues to protect a young boy with abilities from the brutal, time-traveling cyborg Cable.",
+    imdbId: "tt5463162",
+  },
+  {
+    title: "Doctor Strange in the Multiverse of Madness",
+    year: 2022,
+    openingWeekend: 187420998,
+    genre: "Action",
+    director: "Sam Raimi",
+    rating: "PG-13",
+    synopsis: "Doctor Strange teams up with a mysterious teenage girl who can travel across multiverses, to battle other-universe versions of himself which threaten to wipe out the multiverse.",
+    imdbId: "tt9419884",
+  },
+  {
+    title: "Dune",
+    year: 2021,
+    openingWeekend: 40071429,
+    genre: "Sci-Fi",
+    director: "Denis Villeneuve",
+    rating: "PG-13",
+    synopsis: "Paul Atreides arrives on Arrakis after his father accepts the stewardship of the dangerous planet.",
+    imdbId: "tt1160419",
+  },
+  {
+    title: "Dune: Part Two",
+    year: 2024,
+    openingWeekend: 82500000,
+    genre: "Sci-Fi",
+    director: "Denis Villeneuve",
+    rating: "PG-13",
+    synopsis: "Paul Atreides unites with the Fremen while on a warpath of revenge against the conspirators who destroyed his family.",
+    imdbId: "tt15239678",
+  },
+  {
+    title: "Everything Everywhere All at Once",
+    year: 2022,
+    openingWeekend: 609520,
+    genre: "Sci-Fi",
+    director: "Daniel Kwan",
+    rating: "R",
+    synopsis: "A middle-aged Chinese immigrant is swept up into an insane adventure in which she alone can save existence by exploring other universes and connecting with the lives she could have led.",
+    imdbId: "tt6710474",
+  },
+  {
+    title: "F9",
+    year: 2021,
+    openingWeekend: 70000000,
+    genre: "Action",
+    director: "Justin Lin",
+    rating: "PG-13",
+    synopsis: "Dom and the crew must take on an international terrorist who turns out to be Dom and Mia's estranged brother.",
+    imdbId: "tt5433138",
+  },
+  {
+    title: "Fast & Furious 7",
+    year: 2015,
+    openingWeekend: 147187040,
+    genre: "Action",
+    director: "James Wan",
+    rating: "PG-13",
+    synopsis: "Deckard Shaw seeks revenge against Dominic Toretto and his family for his comatose brother.",
+    imdbId: "tt2820852",
+  },
+  {
+    title: "Finding Dory",
+    year: 2016,
+    openingWeekend: 135060273,
+    genre: "Animation",
+    director: "Andrew Stanton",
+    rating: "PG",
+    synopsis: "Friendly but forgetful blue tang Dory begins a search for her long-lost parents and everyone learns a few things about the real meaning of family along the way.",
+    imdbId: "tt2277860",
+  },
+  {
+    title: "Frozen II",
+    year: 2019,
+    openingWeekend: 130263358,
+    genre: "Animation",
+    director: "Chris Buck & Jennifer Lee",
+    rating: "PG",
+    synopsis: "Anna, Elsa, Kristoff, and Olaf head far into the forest to discover the origin of Elsa's powers.",
+    imdbId: "tt4520988",
+  },
+  {
+    title: "Get Out",
+    year: 2017,
+    openingWeekend: 33377060,
+    genre: "Horror",
+    director: "Jordan Peele",
+    rating: "R",
+    synopsis: "A young African-American visits his white girlfriend's parents for the weekend, where his simmering uneasiness about their reception of him eventually reaches a boiling point.",
+    imdbId: "tt5052448",
+  },
+  {
+    title: "Gravity",
+    year: 2013,
+    openingWeekend: 55785112,
+    genre: "Sci-Fi",
+    director: "Alfonso Cuaron",
+    rating: "PG-13",
+    synopsis: "Dr Ryan Stone, an engineer on her first space mission, and Matt Kowalski, an astronaut on his final expedition, have to survive in space after they are hit by debris while spacewalking.",
+    imdbId: "tt1454468",
+  },
+  {
+    title: "Guardians of the Galaxy Vol. 3",
+    year: 2023,
+    openingWeekend: 118414021,
+    genre: "Action",
+    director: "James Gunn",
+    rating: "PG-13",
+    synopsis: "Still reeling from the loss of Gamora, Peter Quill rallies his team to defend the universe and one of their own.",
+    imdbId: "tt6791350",
+  },
+  {
+    title: "Harry Potter and the Deathly Hallows Part 2",
+    year: 2011,
+    openingWeekend: 169189427,
+    genre: "Fantasy",
+    director: "David Yates",
+    rating: "PG-13",
+    synopsis: "Harry, Ron and Hermione set out on a quest to eliminate the remaining horcruxes.",
+    imdbId: "tt1201607",
+  },
+  {
+    title: "Inception",
+    year: 2010,
+    openingWeekend: 62785337,
+    genre: "Sci-Fi",
+    director: "Christopher Nolan",
+    rating: "PG-13",
+    synopsis: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a CEO.",
+    imdbId: "tt1375666",
+  },
+  {
+    title: "Incredibles 2",
+    year: 2018,
+    openingWeekend: 182687905,
+    genre: "Animation",
+    director: "Brad Bird",
+    rating: "PG",
+    synopsis: "The Parr family takes on a new mission which involves a change in family roles.",
+    imdbId: "tt3606756",
+  },
+  {
+    title: "Inside Out",
+    year: 2015,
+    openingWeekend: 90440272,
+    genre: "Animation",
+    director: "Pete Docter",
+    rating: "PG",
+    synopsis: "After young Riley is uprooted from her Midwest life and moved to San Francisco, her emotions conflict on how best to navigate a new city, house, and school.",
+    imdbId: "tt2096673",
+  },
+  {
+    title: "Inside Out 2",
+    year: 2024,
+    openingWeekend: 154230000,
+    genre: "Animation",
+    director: "Kelsey Mann",
+    rating: "PG",
+    synopsis: "A sequel that features Riley entering puberty and experiencing brand new, more complex emotions as a result.",
+    imdbId: "tt22022452",
+  },
+  {
+    title: "Interstellar",
+    year: 2014,
+    openingWeekend: 47510360,
+    genre: "Sci-Fi",
+    director: "Christopher Nolan",
+    rating: "PG-13",
+    synopsis: "When Earth becomes uninhabitable in the future, a farmer and ex-NASA pilot is tasked to pilot a spacecraft to find a new planet for humans.",
+    imdbId: "tt0816692",
+  },
+  {
+    title: "Iron Man",
+    year: 2008,
+    openingWeekend: 98618668,
+    genre: "Action",
+    director: "Jon Favreau",
+    rating: "PG-13",
+    synopsis: "After being held captive in an Afghan cave, billionaire engineer Tony Stark creates a unique weaponized suit of armor to fight evil.",
+    imdbId: "tt0371746",
+  },
+  {
+    title: "Iron Man 3",
+    year: 2013,
+    openingWeekend: 174144585,
+    genre: "Action",
+    director: "Shane Black",
+    rating: "PG-13",
+    synopsis: "When Tony Stark's world is torn apart by a formidable terrorist called the Mandarin, he starts an odyssey of rebuilding and retribution.",
+    imdbId: "tt1300854",
+  },
+  {
+    title: "It",
+    year: 2017,
+    openingWeekend: 123403419,
+    genre: "Horror",
+    director: "Andy Muschietti",
+    rating: "R",
+    synopsis: "In the summer of 1989, a group of bullied kids band together to destroy a shape-shifting monster, which disguises itself as a clown and preys on the children of Derry.",
+    imdbId: "tt1396484",
+  },
+  {
+    title: "John Wick: Chapter 4",
+    year: 2023,
+    openingWeekend: 73817950,
+    genre: "Action",
+    director: "Chad Stahelski",
+    rating: "R",
+    synopsis: "John Wick uncovers a path to defeating The High Table. But before he can earn his freedom, Wick must face off against a new enemy with powerful alliances across the globe.",
+    imdbId: "tt10366206",
+  },
+  {
+    title: "Joker",
+    year: 2019,
+    openingWeekend: 96202337,
+    genre: "Drama",
+    director: "Todd Phillips",
+    rating: "R",
+    synopsis: "A mentally troubled comedian embarks on a downward spiral that leads to the creation of an iconic villain.",
+    imdbId: "tt7286456",
+  },
+  {
+    title: "Jurassic World",
+    year: 2015,
+    openingWeekend: 208806270,
+    genre: "Adventure",
+    director: "Colin Trevorrow",
+    rating: "PG-13",
+    synopsis: "A fully functional dinosaur theme park descends into chaos when a genetically modified dinosaur breaks loose.",
+    imdbId: "tt0369610",
+  },
+  {
+    title: "Jurassic World Dominion",
+    year: 2022,
+    openingWeekend: 145075625,
+    genre: "Adventure",
+    director: "Colin Trevorrow",
+    rating: "PG-13",
+    synopsis: "Four years after the destruction of Isla Nublar, dinosaurs now live and hunt alongside humans all over the world.",
+    imdbId: "tt8041270",
+  },
+  {
+    title: "Jurassic World: Fallen Kingdom",
+    year: 2018,
+    openingWeekend: 148024610,
+    genre: "Adventure",
+    director: "J.A. Bayona",
+    rating: "PG-13",
+    synopsis: "When the island's dormant volcano begins roaring to life, Owen and Claire mount a campaign to rescue the remaining dinosaurs.",
+    imdbId: "tt4881806",
+  },
+  {
+    title: "Logan",
+    year: 2017,
+    openingWeekend: 88411916,
+    genre: "Action",
+    director: "James Mangold",
+    rating: "R",
+    synopsis: "In a future where mutants are nearly extinct, an elderly and weary Logan leads a quiet life. But when Laura, a mutant child pursued by scientists, comes to him for help, he must get her to safety.",
+    imdbId: "tt3315342",
+  },
+  {
+    title: "Moana",
+    year: 2016,
+    openingWeekend: 81093407,
+    genre: "Animation",
+    director: "Ron Clements",
+    rating: "PG",
+    synopsis: "In ancient Polynesia, when a terrible curse incurred by the demigod Maui reaches Moana's island, she answers the Ocean's call to seek out Maui to set things right.",
+    imdbId: "tt3521164",
+  },
+  {
+    title: "No Time to Die",
+    year: 2021,
+    openingWeekend: 55225007,
+    genre: "Action",
+    director: "Cary Joji Fukunaga",
+    rating: "PG-13",
+    synopsis: "James Bond has left active service. His peace is short-lived when an old friend from the CIA turns up asking for help.",
+    imdbId: "tt2382320",
+  },
+  {
+    title: "Oppenheimer",
+    year: 2023,
+    openingWeekend: 82455420,
+    genre: "Drama",
+    director: "Christopher Nolan",
+    rating: "R",
+    synopsis: "A dramatization of the life story of J. Robert Oppenheimer, the physicist who had a large hand in the development of the atomic bombs.",
+    imdbId: "tt15398776",
+  },
+  {
+    title: "Pirates of the Caribbean: Dead Man's Chest",
+    year: 2006,
+    openingWeekend: 135634554,
+    genre: "Adventure",
+    director: "Gore Verbinski",
+    rating: "PG-13",
+    synopsis: "Jack Sparrow races to recover the heart of Davy Jones to avoid enslaving his soul to Jones' service.",
+    imdbId: "tt0383574",
+  },
+  {
+    title: "Rogue One: A Star Wars Story",
+    year: 2016,
+    openingWeekend: 155081681,
+    genre: "Sci-Fi",
+    director: "Gareth Edwards",
+    rating: "PG-13",
+    synopsis: "In a time of conflict, a group of unlikely heroes band together on a mission to steal the plans to the Death Star.",
+    imdbId: "tt3748528",
+  },
+  {
+    title: "Shrek 2",
+    year: 2004,
+    openingWeekend: 108037878,
+    genre: "Animation",
+    director: "Andrew Adamson",
+    rating: "PG",
+    synopsis: "Shrek and Fiona travel to the Kingdom of Far Far Away, where Fiona's parents are King and Queen, to celebrate their marriage.",
+    imdbId: "tt0298148",
+  },
+  {
+    title: "Skyfall",
+    year: 2012,
+    openingWeekend: 88364714,
+    genre: "Action",
+    director: "Sam Mendes",
+    rating: "PG-13",
+    synopsis: "James Bond's loyalty to M is tested when her past comes back to haunt her.",
+    imdbId: "tt1074638",
+  },
+  {
+    title: "Spider-Man",
+    year: 2002,
+    openingWeekend: 114844116,
+    genre: "Action",
+    director: "Sam Raimi",
+    rating: "PG-13",
+    synopsis: "After being bitten by a genetically-modified spider, a shy teenager gains spider-like abilities that he uses to fight injustice as a masked superhero.",
+    imdbId: "tt0145487",
+  },
+  {
+    title: "Spider-Man 3",
+    year: 2007,
+    openingWeekend: 151116516,
+    genre: "Action",
+    director: "Sam Raimi",
+    rating: "PG-13",
+    synopsis: "A strange black entity from another world bonds with Peter Parker and causes inner turmoil as he contends with new villains.",
+    imdbId: "tt0413300",
+  },
+  {
+    title: "Spider-Man: Across the Spider-Verse",
+    year: 2023,
+    openingWeekend: 120560249,
+    genre: "Animation",
+    director: "Joaquim Dos Santos",
+    rating: "PG",
+    synopsis: "Traveling across the multiverse, Miles Morales meets a new team of Spider-People.",
+    imdbId: "tt9362722",
+  },
+  {
+    title: "Spider-Man: Far From Home",
+    year: 2019,
+    openingWeekend: 92579212,
+    genre: "Action",
+    director: "Jon Watts",
+    rating: "PG-13",
+    synopsis: "Peter Parker faces four destructive elemental monsters while on holiday in Europe.",
+    imdbId: "tt6320628",
+  },
+  {
+    title: "Spider-Man: No Way Home",
+    year: 2021,
+    openingWeekend: 260138569,
+    genre: "Action",
+    director: "Jon Watts",
+    rating: "PG-13",
+    synopsis: "Peter Parker seeks Doctor Strange's help to make everyone forget he is Spider-Man.",
+    imdbId: "tt10872600",
+  },
+  {
+    title: "Star Wars: The Force Awakens",
+    year: 2015,
+    openingWeekend: 247966675,
+    genre: "Sci-Fi",
+    director: "J.J. Abrams",
+    rating: "PG-13",
+    synopsis: "Three decades after the defeat of the Empire, a new threat arises in the form of the First Order.",
+    imdbId: "tt2488496",
+  },
+  {
+    title: "Star Wars: The Last Jedi",
+    year: 2017,
+    openingWeekend: 220009584,
+    genre: "Sci-Fi",
+    director: "Rian Johnson",
+    rating: "PG-13",
+    synopsis: "Rey develops her abilities with the help of Luke Skywalker as the Resistance prepares for battle against the First Order.",
+    imdbId: "tt2527336",
+  },
+  {
+    title: "Star Wars: The Rise of Skywalker",
+    year: 2019,
+    openingWeekend: 177383864,
+    genre: "Sci-Fi",
+    director: "J.J. Abrams",
+    rating: "PG-13",
+    synopsis: "The surviving Resistance faces the First Order once again.",
+    imdbId: "tt2527338",
+  },
+  {
+    title: "The Avengers",
+    year: 2012,
+    openingWeekend: 207438708,
+    genre: "Action",
+    director: "Joss Whedon",
+    rating: "PG-13",
+    synopsis: "Earth's mightiest heroes must come together and learn to fight as a team if they are going to stop the mischievous Loki and his alien army from enslaving humanity.",
+    imdbId: "tt0848228",
+  },
+  {
+    title: "The Batman",
+    year: 2022,
+    openingWeekend: 134009462,
+    genre: "Action",
+    director: "Matt Reeves",
+    rating: "PG-13",
+    synopsis: "When a sadistic serial killer begins murdering key political figures in Gotham, the Batman is forced to investigate the city's hidden corruption.",
+    imdbId: "tt1877830",
+  },
+  {
+    title: "The Dark Knight",
+    year: 2008,
+    openingWeekend: 158411483,
+    genre: "Action",
+    director: "Christopher Nolan",
+    rating: "PG-13",
+    synopsis: "Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent.",
+    imdbId: "tt0468569",
+  },
+  {
+    title: "The Dark Knight Rises",
+    year: 2012,
+    openingWeekend: 160887295,
+    genre: "Action",
+    director: "Christopher Nolan",
+    rating: "PG-13",
+    synopsis: "Bane, an imposing terrorist, attacks Gotham City and disrupts its eight-year-long period of peace.",
+    imdbId: "tt1345836",
+  },
+  {
+    title: "The Fate of the Furious",
+    year: 2017,
+    openingWeekend: 98786705,
+    genre: "Action",
+    director: "F. Gary Gray",
+    rating: "PG-13",
+    synopsis: "When a mysterious woman seduces Dominic Toretto into the world of terrorism and a betrayal of those closest to him, the crew face trials that will test them as never before.",
+    imdbId: "tt4630562",
+  },
+  {
+    title: "The Godfather",
+    year: 1972,
+    openingWeekend: 26081000,
+    genre: "Crime",
+    director: "Francis Ford Coppola",
+    rating: "R",
+    synopsis: "The aging patriarch of an organized crime dynasty transfers control to his reluctant son.",
+    imdbId: "tt0068646",
+  },
+  {
+    title: "The Hunger Games",
+    year: 2012,
+    openingWeekend: 152535747,
+    genre: "Sci-Fi",
+    director: "Gary Ross",
+    rating: "PG-13",
+    synopsis: "Katniss Everdeen voluntarily takes her younger sister's place in the Hunger Games: a televised competition in which two teenagers from each of the twelve Districts of Panem are chosen at random to fight to the death.",
+    imdbId: "tt1392170",
+  },
+  {
+    title: "The Hunger Games: Catching Fire",
+    year: 2013,
+    openingWeekend: 158074286,
+    genre: "Sci-Fi",
+    director: "Francis Lawrence",
+    rating: "PG-13",
+    synopsis: "Katniss Everdeen and Peeta Mellark become targets of the Capitol after their victory in the 74th Hunger Games sparks a rebellion.",
+    imdbId: "tt1951264",
+  },
+  {
+    title: "The Lion King",
+    year: 2019,
+    openingWeekend: 191770759,
+    genre: "Animation",
+    director: "Jon Favreau",
+    rating: "PG",
+    synopsis: "A young lion prince flees his kingdom after his father's death only to return years later to reclaim his throne.",
+    imdbId: "tt6105098",
+  },
+  {
+    title: "The Super Mario Bros. Movie",
+    year: 2023,
+    openingWeekend: 146361865,
+    genre: "Animation",
+    director: "Aaron Horvath",
+    rating: "PG",
+    synopsis: "A Brooklyn plumber named Mario travels through the Mushroom Kingdom with a princess to save his brother from a tyrannical fire-breathing turtle.",
+    imdbId: "tt6718170",
+  },
+  {
+    title: "Thor: Love and Thunder",
+    year: 2022,
+    openingWeekend: 144165107,
+    genre: "Action",
+    director: "Taika Waititi",
+    rating: "PG-13",
+    synopsis: "Thor enlists the help of Valkyrie, Korg, and ex-girlfriend Jane Foster to fight Gorr the God Butcher.",
+    imdbId: "tt10648342",
+  },
+  {
+    title: "Thor: Ragnarok",
+    year: 2017,
+    openingWeekend: 122744989,
+    genre: "Action",
+    director: "Taika Waititi",
+    rating: "PG-13",
+    synopsis: "Imprisoned on the planet Sakaar, Thor must race against time to return to Asgard and stop Ragnarok.",
+    imdbId: "tt3501632",
+  },
+  {
+    title: "Titanic",
+    year: 1997,
+    openingWeekend: 28638131,
+    genre: "Romance",
+    director: "James Cameron",
+    rating: "PG-13",
+    synopsis: "A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the ill-fated R.M.S. Titanic.",
+    imdbId: "tt0120338",
+  },
+  {
+    title: "Top Gun: Maverick",
+    year: 2022,
+    openingWeekend: 126707459,
+    genre: "Action",
+    director: "Joseph Kosinski",
+    rating: "PG-13",
+    synopsis: "After thirty years of service as a top naval aviator, Pete Mitchell is where he belongs, pushing the envelope as a courageous test pilot.",
+    imdbId: "tt1745960",
+  },
+  {
+    title: "Toy Story 4",
+    year: 2019,
+    openingWeekend: 120908065,
+    genre: "Animation",
+    director: "Josh Cooley",
+    rating: "G",
+    synopsis: "Woody and the gang go on a road trip with Bonnie and a new toy named Forky.",
+    imdbId: "tt1979376",
+  },
+  {
+    title: "Transformers: Age of Extinction",
+    year: 2014,
+    openingWeekend: 100038390,
+    genre: "Action",
+    director: "Michael Bay",
+    rating: "PG-13",
+    synopsis: "When humanity allies with a bounty hunter in pursuit of Optimus Prime, the Autobots turn to a mechanic and his family for help.",
+    imdbId: "tt2109248",
+  },
+  {
+    title: "Transformers: Dark of the Moon",
+    year: 2011,
+    openingWeekend: 97852865,
+    genre: "Action",
+    director: "Michael Bay",
+    rating: "PG-13",
+    synopsis: "The Autobots learn of a Cybertronian spacecraft hidden on the moon, and race against the Decepticons to reach it.",
+    imdbId: "tt1399103",
+  },
+  {
+    title: "Venom",
+    year: 2018,
+    openingWeekend: 80255756,
+    genre: "Action",
+    director: "Ruben Fleischer",
+    rating: "PG-13",
+    synopsis: "A journalist becomes the host of an alien symbiote that gives him superpowers.",
+    imdbId: "tt1270797",
+  },
+  {
+    title: "Wonder Woman",
+    year: 2017,
+    openingWeekend: 103251471,
+    genre: "Action",
+    director: "Patty Jenkins",
+    rating: "PG-13",
+    synopsis: "When a pilot crashes and tells of conflict in the outside world, Diana, an Amazonian warrior in training, leaves home to fight a war, discovering her full powers and true destiny.",
+    imdbId: "tt0451279",
+  },
+  {
+    title: "Zootopia",
+    year: 2016,
+    openingWeekend: 75063401,
+    genre: "Animation",
+    director: "Byron Howard",
+    rating: "PG",
+    synopsis: "In a city of anthropomorphic animals, a rookie bunny cop and a cynical con artist fox must work together to uncover a conspiracy.",
+    imdbId: "tt2948356",
   },
 ];
 
@@ -324,6 +940,44 @@ const sampleMovieAthletes = [
   { name: "Willie Beamen", movie: "Any Given Sunday", movieYear: 1999, sport: "Football", actor: "Jamie Foxx", archetype: "wildcard", bio: "96 Charisma; 'Steamin' for his rapid rise to celebrity and flashy, playmaking dual-threat talent.", quote: "I am the man.", athleticism: 94, clutch: 92, leadership: 72, heart: 85, skill: 88, intimidation: 82, teamwork: 45, charisma: 96, wildcardName: "Steamin'", wildcardCategory: "Social", wildcardValue: 97 },
 ];
 
+async function enrichMoviesFromOmdb() {
+  const apiKey = process.env.OMDB_API_KEY;
+  if (!apiKey) {
+    console.log("No OMDB_API_KEY found, skipping auto-enrichment");
+    return;
+  }
+
+  const allMovies = await db.select().from(movies);
+  const moviesToEnrich = allMovies.filter(m => !m.posterUrl && m.imdbId);
+  if (moviesToEnrich.length === 0) {
+    console.log("All movies already have posters, skipping enrichment");
+    return;
+  }
+
+  console.log(`Enriching ${moviesToEnrich.length} movies from OMDb...`);
+  let enriched = 0;
+  for (const movie of moviesToEnrich) {
+    try {
+      const omdbUrl = `https://www.omdbapi.com/?i=${movie.imdbId}&apikey=${apiKey}`;
+      const res = await fetch(omdbUrl);
+      const data = await res.json() as any;
+      if (data.Response === "True") {
+        const updates: Record<string, any> = {};
+        if (data.Poster && data.Poster !== "N/A") updates.posterUrl = data.Poster;
+        if (data.imdbRating && data.imdbRating !== "N/A") updates.rating = data.imdbRating;
+        if (data.Plot && data.Plot !== "N/A") updates.synopsis = data.Plot;
+        if (Object.keys(updates).length > 0) {
+          await db.update(movies).set(updates).where(eq(movies.id, movie.id));
+          enriched++;
+        }
+      }
+    } catch (e) {
+      console.error(`Failed to enrich ${movie.title}:`, e);
+    }
+  }
+  console.log(`Enriched ${enriched} movies with OMDb data`);
+}
+
 export async function seedDatabase() {
   try {
     const existingQuestions = await db.select().from(triviaQuestions).limit(1);
@@ -335,12 +989,34 @@ export async function seedDatabase() {
       console.log("Trivia questions already exist, skipping seed");
     }
 
-    const existingMovies = await db.select().from(movies).limit(1);
+    const existingMovies = await db.select().from(movies);
     if (existingMovies.length === 0) {
       console.log("Seeding movies...");
       await db.insert(movies).values(sampleMovies);
       console.log(`Seeded ${sampleMovies.length} movies`);
+    } else if (existingMovies.length < sampleMovies.length) {
+      const existingTitles = new Set(existingMovies.map(m => m.title));
+      const newMovies = sampleMovies.filter(m => !existingTitles.has(m.title));
+      if (newMovies.length > 0) {
+        console.log(`Adding ${newMovies.length} new movies...`);
+        await db.insert(movies).values(newMovies);
+        console.log(`Added ${newMovies.length} new movies`);
+      }
+      const moviesToUpdate = existingMovies.filter(m => !m.imdbId);
+      for (const movie of moviesToUpdate) {
+        const seedMovie = sampleMovies.find(s => s.title === movie.title);
+        if (seedMovie?.imdbId) {
+          await db.update(movies).set({ imdbId: seedMovie.imdbId }).where(eq(movies.id, movie.id));
+        }
+      }
     } else {
+      const moviesToUpdate = existingMovies.filter(m => !m.imdbId);
+      for (const movie of moviesToUpdate) {
+        const seedMovie = sampleMovies.find(s => s.title === movie.title);
+        if (seedMovie?.imdbId) {
+          await db.update(movies).set({ imdbId: seedMovie.imdbId }).where(eq(movies.id, movie.id));
+        }
+      }
       console.log("Movies already exist, skipping seed");
     }
 
@@ -352,6 +1028,8 @@ export async function seedDatabase() {
     } else {
       console.log("Movie athletes already exist, skipping seed");
     }
+
+    await enrichMoviesFromOmdb();
 
     console.log("Database seeding complete!");
   } catch (error) {
